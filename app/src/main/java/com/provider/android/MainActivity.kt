@@ -1,6 +1,7 @@
 package com.provider.android
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -8,8 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.provider.android.provider.*
@@ -17,19 +17,30 @@ import com.provider.android.ui.theme.ProviderKt_AndroidTheme
 import kotlin.concurrent.thread
 
 var i = 0;
-val A_provider = providerOf<String>(name = "A_provider") { ref ->
+val A_provider = providerOf<Int>(name = "A_provider") { ref ->
     thread {
         while (true) {
             Thread.sleep(5000)
-            ref.state = "A${i++}"
+            ref.state = i++
         }
     }
-    "A"
+    i
 }
 
 val B_provider = providerOf<String>(name = "B_provider") { ref ->
     val aValue = ref.watch(A_provider)
     "B ${aValue}"
+}
+
+val C_provider = providerFamilyOf<String, String>(name = "C_provider") { ref, arg ->
+    arg
+}
+
+val D_provider = providerDisposableFamilyOf<String, String>(name = "D_provider") { ref, arg ->
+    ref.onDisposed = {
+        Log.d("ProviderKt", "D_provider disposed $arg")
+    }
+    arg
 }
 
 class MainActivity : ComponentActivity() {
@@ -44,13 +55,14 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colors.background
                     ) {
                         Column {
-                            Greeting("Id=${LocalProviderContainer.current?.hashCode()}")
                             ProviderContainerComposable {
-                                val value by B_provider.observeAsState()
+                                val valueA by A_provider.observeAsState()
+                                val valueB by B_provider.observeAsState()
+                                val valueC by C_provider("Yolo").observeAsState()
+                                val valueD by D_provider("D ${if (valueA % 2 != 0) valueA - 1 else valueA}").observeAsState()
                                 Greeting(
-                                    "Id=${LocalProviderContainer.current?.hashCode()} Value=$value"
+                                    "valueA=$valueA\nvalueB=$valueB\nvalueC=$valueC\nvalueD=$valueD"
                                 )
-
                             }
                         }
                     }

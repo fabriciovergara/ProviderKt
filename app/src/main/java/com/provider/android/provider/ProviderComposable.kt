@@ -22,10 +22,11 @@ fun ProviderContainerComposable(
 
 @Composable
 fun <T> Provider<T>.observeAsState(): State<T> {
+
     val lifecycleOwner = LocalLifecycleOwner.current
     val container = LocalProviderContainer.current ?: error("")
     val state = remember { mutableStateOf(container.read(this)) }
-    DisposableEffect(this, lifecycleOwner) {
+    DisposableEffect(this.key, lifecycleOwner) {
         val dispose = container.listen(this@observeAsState) { next ->
            state.value = next
         }
