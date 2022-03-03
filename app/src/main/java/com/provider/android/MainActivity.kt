@@ -17,7 +17,7 @@ import com.provider.android.ui.theme.ProviderKt_AndroidTheme
 import kotlin.concurrent.thread
 
 var i = 0;
-val A_provider = Provider<String>(name = "A_provider") { ref ->
+val A_provider = providerOf<String>(name = "A_provider") { ref ->
     thread {
         while (true) {
             Thread.sleep(5000)
@@ -27,7 +27,7 @@ val A_provider = Provider<String>(name = "A_provider") { ref ->
     "A"
 }
 
-val B_provider = Provider<String>(name = "B_provider") { ref ->
+val B_provider = providerOf<String>(name = "B_provider") { ref ->
     val aValue = ref.watch(A_provider)
     "B ${aValue}"
 }
@@ -44,11 +44,11 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colors.background
                     ) {
                         Column {
-                            Greeting("Id=${LocalProviderContainer.current?.id}")
+                            Greeting("Id=${LocalProviderContainer.current?.hashCode()}")
                             ProviderContainerComposable {
                                 val value by B_provider.observeAsState()
                                 Greeting(
-                                    "Id=${LocalProviderContainer.current?.id} Value=$value"
+                                    "Id=${LocalProviderContainer.current?.hashCode()} Value=$value"
                                 )
 
                             }

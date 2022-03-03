@@ -1,22 +1,15 @@
 package com.provider.android.provider
 
-import java.util.concurrent.atomic.AtomicInteger
-
-private val idRef = AtomicInteger()
-
-
 class ProviderContainer(
     internal val parent: ProviderContainer? = null,
     overrides: Set<ProviderOverride<*>> = setOf()
 ) : ProviderReader, ProviderListener {
 
-    val id = idRef.getAndIncrement()
-
     private val overridesMap = overrides.associate {
-        it.original to it.override
+        it.original.key to it.override
     }
 
-    private var stateMap = mapOf<Provider<*>, ProviderEntry<*>>()
+    private var stateMap = mapOf<ProviderKey, ProviderEntry<*>>()
 
     @Suppress("UNCHECKED_CAST")
     override fun <State> read(provider: Provider<State>): State {
@@ -35,12 +28,12 @@ class ProviderContainer(
     private fun <State> readInternal(provider: Provider<State>): State {
         synchronized(this) {
             val entry = stateMap.getTypedOrCreate(provider, this)
-            stateMap = stateMap + (provider to entry)
+            stateMap = stateMap + (provider.key to entry)
             return entry.state
         }
     }
 
-    override fun <State> listen(provider: Provider<State>, block: (State) -> Unit): () -> Unit {
+    override fun <State> listen(provider: Provider<State>, block: (State) -> Unit): Dispose {
         val providerOverride = overridesMap.getTypedOrNull(provider)
         if (providerOverride != null) {
             return listenInternal(providerOverride, block)
@@ -56,28 +49,36 @@ class ProviderContainer(
     private fun <State> listenInternal(
         provider: Provider<State>,
         block: (State) -> Unit
-    ): () -> Unit {
+    ): Dispose {
         val listener = { block(read(provider)) }
         synchronized(this) {
             var entry = stateMap.getTypedOrCreate(provider, this)
             entry = entry.copy(listeners = entry.listeners + listener)
-            stateMap = stateMap + (provider to entry)
+            stateMap = stateMap + (provider.key to entry)
         }
 
         listener.invoke()
         return {
             synchronized(this) {
+                var onDisposed: Dispose? = null
                 var entryDispose = stateMap.getTypedOrNull(provider)
                 if (entryDispose != null) {
                     entryDispose = entryDispose.copy(listeners = entryDispose.listeners - listener)
-                    stateMap = stateMap + (provider to entryDispose)
+                    if (entryDispose.shouldDispose) {
+                        stateMap = stateMap - provider.key
+                        onDisposed = entryDispose.ref.onDisposed
+                    } else {
+                        stateMap = stateMap + (provider.key to entryDispose)
+                    }
                 }
-            }
+
+                onDisposed
+            }?.invoke()
         }
     }
 
     internal fun <State> watch(origin: Provider<*>, provider: Provider<State>) {
-        var dispose: (() -> Unit)? = null
+        var dispose: Dispose? = null
         dispose = listen(provider) {
             dispose?.run {
                 invoke()
@@ -103,7 +104,7 @@ class ProviderContainer(
         synchronized(this) {
             var entry = stateMap.getTypedOrCreate(provider, this)
             entry = entry.copy(state = next)
-            stateMap = stateMap + (provider to entry)
+            stateMap = stateMap + (provider.key to entry)
             entry.listeners
         }.forEach {
             it.invoke()
@@ -128,7 +129,7 @@ class ProviderContainer(
             var entry = stateMap.getTypedOrNull(provider)
             if (entry != null) {
                 entry = entry.copy(state = provider.create(entry.ref))
-                stateMap = stateMap + (provider to entry)
+                stateMap = stateMap + (provider.key to entry)
                 entry.listeners
             } else {
                 emptyList()
@@ -142,7 +143,7 @@ class ProviderContainer(
 private class ProviderRefImpl<State>(
     private val container: ProviderContainer,
     private val self: Provider<State>
-) : ProviderRef<State> {
+) : ProviderRef<State>, DisposableProviderRef<State> {
 
     override fun <State> read(provider: Provider<State>): State {
         return container.read(provider)
@@ -153,7 +154,7 @@ private class ProviderRefImpl<State>(
         return container.read(provider)
     }
 
-    override fun <State> listen(provider: Provider<State>, block: (State) -> Unit): () -> Unit {
+    override fun <State> listen(provider: Provider<State>, block: (State) -> Unit): Dispose {
         return container.listen(provider, block)
     }
 
@@ -162,18 +163,24 @@ private class ProviderRefImpl<State>(
         set(value) {
             container.update(self, value)
         }
+
+    override var onDisposed: Dispose = {}
 }
 
 private data class ProviderEntry<State>(
     val state: State,
+    val provider: Provider<State>,
     val ref: ProviderRefImpl<State>,
     val listeners: Set<() -> Unit> = emptySet()
 )
 
-private fun <State> Map<Provider<*>, Provider<*>>.getTypedOrNull(
-    key: Provider<State>
+private val <State> ProviderEntry<State>.shouldDispose: Boolean
+    get() = provider is DisposableProvider<State> && listeners.isEmpty()
+
+private fun <State> Map<ProviderKey, Provider<*>>.getTypedOrNull(
+    provider: Provider<State>
 ): Provider<State>? {
-    val value = get(key)
+    val value = get(provider.key)
     return if (value != null) {
         @Suppress("UNCHECKED_CAST")
         value as Provider<State>
@@ -182,11 +189,10 @@ private fun <State> Map<Provider<*>, Provider<*>>.getTypedOrNull(
     }
 }
 
-
-private fun <State> Map<Provider<*>, ProviderEntry<*>>.getTypedOrNull(
-    key: Provider<State>,
+private fun <State> Map<ProviderKey, ProviderEntry<*>>.getTypedOrNull(
+    provider: Provider<State>,
 ): ProviderEntry<State>? {
-    val value = get(key)
+    val value = get(provider.key)
     return if (value != null) {
         @Suppress("UNCHECKED_CAST")
         value as ProviderEntry<State>
@@ -195,15 +201,15 @@ private fun <State> Map<Provider<*>, ProviderEntry<*>>.getTypedOrNull(
     }
 }
 
-private fun <State> Map<Provider<*>, ProviderEntry<*>>.getTypedOrCreate(
-    key: Provider<State>,
+private fun <State> Map<ProviderKey, ProviderEntry<*>>.getTypedOrCreate(
+    provider: Provider<State>,
     container: ProviderContainer
 ): ProviderEntry<State> {
-    val value = getTypedOrNull(key)
+    val value = getTypedOrNull(provider)
     return if (value != null) {
         value
     } else {
-        val ref = ProviderRefImpl(container = container, self = key)
-        ProviderEntry(state = key.create(ref), ref = ref)
+        val ref = ProviderRefImpl(container = container, self = provider)
+        ProviderEntry(state = provider.create(ref), ref = ref, provider = provider)
     }
 }

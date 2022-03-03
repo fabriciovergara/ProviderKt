@@ -1,8 +1,6 @@
-import com.provider.android.provider.Provider
-import com.provider.android.provider.ProviderContainer
-import com.provider.android.provider.overrideWithProvider
-import com.provider.android.provider.overrideWithValue
+import com.provider.android.provider.*
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProviderTest {
@@ -10,7 +8,7 @@ class ProviderTest {
     @Test
     fun `read WHEN simple provider THEN return value`() {
         val container = ProviderContainer()
-        val provider = Provider<String>(name = "name") {
+        val provider = providerOf<String>(name = "name") {
             "A"
         }
 
@@ -19,11 +17,11 @@ class ProviderTest {
 
     @Test
     fun `read WHEN override with provider THEN return the override value `() {
-        val provider = Provider<String>(name = "name") {
+        val provider = providerOf<String>(name = "name") {
             "A"
         }
 
-        val providerOverride = Provider<String>(name = "name") {
+        val providerOverride = providerOf<String>(name = "name") {
             "B"
         }
 
@@ -37,31 +35,16 @@ class ProviderTest {
     }
 
     @Test
-    fun `read WHEN override with value THEN return the override value `() {
-        val provider = Provider<String>(name = "name") {
-            "A"
-        }
-
-        val container = ProviderContainer(
-            overrides = setOf(
-                provider.overrideWithValue("B")
-            )
-        )
-
-        assertEquals("B", container.read(provider))
-    }
-
-    @Test
     fun `read WHEN override multiple in multiple containers THEN return the override value from last container`() {
-        val provider = Provider<String>(name = "name") {
+        val provider = providerOf<String>(name = "name") {
             "A"
         }
 
-        val providerOverride = Provider<String>(name = "name") {
+        val providerOverride = providerOf<String>(name = "name") {
             "B"
         }
 
-        val providerOverride2 = Provider<String>(name = "name") {
+        val providerOverride2 = providerOf<String>(name = "name") {
             "C"
         }
 
@@ -88,11 +71,11 @@ class ProviderTest {
     @Test
     fun `read WHEN provider depends to another THEN combine value`() {
         val container = ProviderContainer()
-        val provider = Provider<String>(name = "name") {
+        val provider = providerOf<String>(name = "name") {
             "A"
         }
 
-        val provider2 = Provider<String>(name = "name2") {
+        val provider2 = providerOf<String>(name = "name2") {
             "B + ${it.read(provider)}"
         }
 
@@ -103,7 +86,7 @@ class ProviderTest {
     fun `read WHEN update value THEN return updated value`() {
         val container = ProviderContainer()
         lateinit var update: () -> Unit
-        val provider = Provider<String>(name = "name") {
+        val provider = providerOf<String>(name = "name") {
             update = { it.state = "B" }
             "A"
         }
@@ -117,12 +100,12 @@ class ProviderTest {
     fun `read WHEN container has no parent THEN hold state isolated`() {
         val container1 = ProviderContainer()
         var provider1Value = "A"
-        val provider1 = Provider<String>(name = "name1") {
+        val provider1 = providerOf<String>(name = "name1") {
             provider1Value
         }
 
         val container2 = ProviderContainer()
-        val provider2 = Provider<String>(name = "name2") {
+        val provider2 = providerOf<String>(name = "name2") {
             "B + ${it.read(provider1)}"
         }
 
@@ -139,12 +122,12 @@ class ProviderTest {
     fun `read WHEN container has parent THEN lookup parent for already initialized provider`() {
         val container1 = ProviderContainer()
         var provider1Value = "A"
-        val provider1 = Provider<String>(name = "name1") {
+        val provider1 = providerOf<String>(name = "name1") {
             provider1Value
         }
 
         val container2 = ProviderContainer(parent = container1)
-        val provider2 = Provider<String>(name = "name2") {
+        val provider2 = providerOf<String>(name = "name2") {
             "B + ${it.read(provider1)}"
         }
 
@@ -161,13 +144,13 @@ class ProviderTest {
     fun `read WHEN update value of watch dependency THEN return updated value`() {
         val container = ProviderContainer()
         lateinit var update: () -> Unit
-        val provider1 = Provider<String>(name = "name1") {
+        val provider1 = providerOf<String>(name = "name1") {
             update = { it.state = "B" }
             "A"
         }
 
         var updateCount = 0
-        val provider2 = Provider<String>(name = "name2") {
+        val provider2 = providerOf<String>(name = "name2") {
             updateCount++
             "B + ${it.watch(provider1)}"
         }
@@ -184,10 +167,40 @@ class ProviderTest {
     }
 
     @Test
+    fun `read WHEN family provider THEN return provided argument`() {
+        val container = ProviderContainer()
+        val provider = providerFamilyOf<String, String>(name = "name1") { _, arg ->
+            arg
+        }
+
+        assertEquals("A", container.read(provider("A")))
+    }
+
+    @Test
+    fun `read WHEN family provider and called with different arguments THEN return value for each`() {
+        val container = ProviderContainer()
+        var callCount = 0
+        val provider = providerFamilyOf<String, String>(name = "name1") { _, arg ->
+            "$arg $callCount".also {
+                callCount++
+            }
+        }
+
+        assertEquals("A 0", container.read(provider("A")))
+        assertEquals("A 0", container.read(provider("A")))
+
+        assertEquals("B 1", container.read(provider("B")))
+        assertEquals("B 1", container.read(provider("B")))
+
+        assertEquals("C 2", container.read(provider("C")))
+        assertEquals("C 2", container.read(provider("C")))
+    }
+
+    @Test
     fun `listen WHEN update value THEN notify change`() {
         val container = ProviderContainer()
         lateinit var update: () -> Unit
-        val provider1 = Provider<String>(name = "name1") {
+        val provider1 = providerOf<String>(name = "name1") {
             update = { it.state = "B" }
             "A"
         }
@@ -208,7 +221,7 @@ class ProviderTest {
     fun `listen WHEN disposed THEN notify don't change`() {
         val container = ProviderContainer()
         lateinit var update: () -> Unit
-        val provider1 = Provider<String>(name = "name1") {
+        val provider1 = providerOf<String>(name = "name1") {
             update = { it.state = "B" }
             "A"
         }
@@ -224,5 +237,54 @@ class ProviderTest {
         update()
 
         assertEquals("A", value)
+
+        container.listen(provider1) { next ->
+            value = next
+        }
+
+        assertEquals("B", value)
+    }
+
+    @Test
+    fun `listen WHEN disposable provider and there is no more listener THEN remove entry`() {
+        val container = ProviderContainer()
+        var providerValue = "A"
+        val provider1 = providerDisposableOf<String>(name = "name1") {
+            providerValue
+        }
+
+        lateinit var value: String
+        val dispose = container.listen(provider1) { next ->
+            value = next
+        }
+
+        assertEquals("A", value)
+
+        dispose()
+        providerValue = "B"
+
+        container.listen(provider1) { next ->
+            value = next
+        }
+
+        assertEquals("B", value)
+    }
+
+    @Test
+    fun `listen WHEN disposable provider and disposed THEN then call onDisposed`() {
+        val container = ProviderContainer()
+        var onDisposeCallCount = 0
+        val provider1 = providerDisposableOf<String>(name = "name1") {
+            it.onDisposed = {
+                onDisposeCallCount++
+            }
+            "A"
+        }
+
+        val dispose = container.listen(provider1) {}
+
+        dispose()
+
+        assertEquals(1, onDisposeCallCount)
     }
 }
