@@ -1,4 +1,4 @@
-package com.provider.android.provider
+package com.provider
 
 interface ProviderReader {
     fun <State> read(provider: Provider<State>): State
@@ -9,7 +9,7 @@ interface ProviderWatcher {
 }
 
 interface ProviderListener {
-    fun <State> listen(provider: Provider<State>, block: (State) -> Unit): Dispose
+    fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose
 }
 
 interface ProviderState<State> {
@@ -17,6 +17,10 @@ interface ProviderState<State> {
 }
 
 typealias Dispose = () -> Unit
+
+typealias ProviderKey = String
+
+typealias Listener<State> = (State) -> Unit
 
 interface Ref : ProviderReader, ProviderWatcher, ProviderListener
 
@@ -26,31 +30,21 @@ interface DisposableProviderRef<State> : ProviderRef<State> {
     var onDisposed: Dispose
 }
 
-typealias ProviderKey = String
-
-fun createProviderKey(): ProviderKey {
-    return "${Any().hashCode()}"
+sealed class Provider<State>(val key: ProviderKey, val name: String) {
+    override fun toString(): String = "Provider($name)"
 }
 
-fun <Argument> combineProviderKey(key: ProviderKey, argument: Argument): ProviderKey {
-    return "$key+${argument.hashCode()}"
-}
-
-open class Provider<State> internal constructor(
-    val name: String,
-    val key: ProviderKey,
-    val create: (ProviderRef<State>) -> State,
-)
-
-class DisposableProvider<State>(
-    name: String,
+internal class AlwaysAliveProvider<State>(
     key: ProviderKey,
-    create: (DisposableProviderRef<State>) -> State
-) : Provider<State>(name, key, { ref ->
-    // TODO fix this
-    create(ref as DisposableProviderRef<State>)
-})
+    name: String,
+    val create: (ProviderRef<State>) -> State
+) : Provider<State>(key, name)
 
+internal class DisposableProvider<State>(
+    key: ProviderKey,
+    name: String,
+    val create: (DisposableProviderRef<State>) -> State
+) : Provider<State>(key, name)
 
 class ProviderOverride<State>(
     val original: Provider<State>,
@@ -63,12 +57,19 @@ fun <State> Provider<State>.overrideWithProvider(
     return ProviderOverride(original = this, override = override)
 }
 
+internal fun providerKeyOf(
+    base: ProviderKey = "${Any().hashCode()}",
+    extra: Any? = null
+): ProviderKey {
+    return extra?.let { "$base+${it.hashCode()}" } ?: base
+}
+
 fun <State> providerOf(
     name: String,
     create: (ProviderRef<State>) -> State
 ): Provider<State> {
-    val key = createProviderKey()
-    return Provider(
+    val key = providerKeyOf()
+    return AlwaysAliveProvider(
         name = name,
         key = key,
         create = create
@@ -79,7 +80,7 @@ fun <State> providerDisposableOf(
     name: String,
     create: (DisposableProviderRef<State>) -> State
 ): Provider<State> {
-    val key = createProviderKey()
+    val key = providerKeyOf()
     return DisposableProvider(
         name = name,
         key = key,
@@ -91,12 +92,11 @@ fun <State, Argument> providerFamilyOf(
     name: String,
     create: (ProviderRef<State>, Argument) -> State
 ): (Argument) -> Provider<State> {
-    val key = createProviderKey()
+    val key = providerKeyOf()
     return { arg ->
-        val composedKey = combineProviderKey(key, arg)
-        Provider(
+        AlwaysAliveProvider(
             name = name,
-            key = composedKey,
+            key = providerKeyOf(key, arg),
             create = { ref -> create(ref, arg) }
         )
     }
@@ -106,12 +106,11 @@ fun <State, Argument> providerDisposableFamilyOf(
     name: String,
     create: (DisposableProviderRef<State>, Argument) -> State
 ): (Argument) -> Provider<State> {
-    val key = createProviderKey()
+    val key = providerKeyOf()
     return { arg ->
-        val composedKey = combineProviderKey(key, arg)
         DisposableProvider(
             name = name,
-            key = composedKey,
+            key = providerKeyOf(key, arg),
             create = { ref -> create(ref, arg) }
         )
     }

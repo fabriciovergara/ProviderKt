@@ -1,6 +1,7 @@
-import com.provider.android.provider.*
+package com.provider
+
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ProviderTest {
@@ -286,5 +287,46 @@ class ProviderTest {
         dispose()
 
         assertEquals(1, onDisposeCallCount)
+    }
+
+
+    @Test
+    fun `read WHEN contains cyclical dependency THEN throw error`() {
+        val container = ProviderContainer()
+
+        lateinit var provider1: Provider<String>
+        lateinit var provider2: Provider<String>
+
+        provider1 = providerOf(name = "name1") {
+            it.read(provider2)
+        }
+
+        provider2 = providerOf(name = "name2") {
+            it.read(provider1)
+        }
+
+        assertThrows(Error::class.java) {
+            container.read(provider2)
+        }
+    }
+
+    @Test
+    fun `listen WHEN contains cyclical dependency THEN throw error`() {
+        val container = ProviderContainer()
+
+        lateinit var provider1: Provider<String>
+        lateinit var provider2: Provider<String>
+
+        provider1 = providerOf(name = "name1") {
+            it.read(provider2)
+        }
+
+        provider2 = providerOf(name = "name2") {
+            it.read(provider1)
+        }
+
+        assertThrows(Error::class.java) {
+            container.listen(provider2) { }
+        }
     }
 }
