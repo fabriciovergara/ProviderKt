@@ -3,9 +3,7 @@ package com.provider
 class ProviderContainer internal constructor(
     internal val parent: ProviderContainer?,
     internal val overrides: Map<ProviderKey, Provider<*>>,
-    internal var stateMap: Map<ProviderKey, ProviderEntry<*>>,
-    internal var createGuard: Provider<*>? = null,
-    internal val lock: Any = Any()
+    internal var state: Map<ProviderKey, ProviderEntry<*>>
 ) : ProviderListener, ProviderReader {
 
     constructor(
@@ -14,7 +12,7 @@ class ProviderContainer internal constructor(
     ) : this(
         parent = parent,
         overrides = overrides.associate { it.original.key to it.override },
-        stateMap = mapOf()
+        state = mapOf()
     )
 
     override fun <State> read(provider: Provider<State>): State {
@@ -61,7 +59,6 @@ internal class RefInternal<State>(
 }
 
 
-
 private fun <State> ProviderContainer.doRead(
     provider: Provider<State>
 ): State {
@@ -80,9 +77,9 @@ private fun <State> ProviderContainer.doRead(
 private fun <State> ProviderContainer.doReadInternal(
     provider: Provider<State>
 ): State {
-    return synchronized(lock) {
-        val entry = stateMap.getTypedOrCreate(provider, this)
-        stateMap = stateMap + (provider.key to entry)
+    return synchronized(state) {
+        val entry = state.getTypedOrCreate(provider, this)
+        state = state + (provider.key to entry)
         entry.state
     }
 }
@@ -109,10 +106,10 @@ private fun <State> ProviderContainer.doListenInternal(
 ): Dispose {
     val listener = { block(read(provider)) }
 
-    synchronized(lock) {
-        var entry = stateMap.getTypedOrCreate(provider, this)
+    synchronized(state) {
+        var entry = state.getTypedOrCreate(provider, this)
         entry = entry.copy(listeners = entry.listeners + listener)
-        stateMap = stateMap + (provider.key to entry)
+        state = state + (provider.key to entry)
     }
 
     listener.invoke()
@@ -125,14 +122,14 @@ internal fun <State> ProviderContainer.doDisposeListen(
     provider: Provider<State>,
     listener: () -> Unit
 ): Dispose? {
-    return synchronized(lock) {
-        var entryDispose = stateMap.getTypedOrNull(provider) ?: return@synchronized null
-        entryDispose = entryDispose.copy(listeners = entryDispose.listeners - listener)
-        if (entryDispose.shouldDispose) {
-            stateMap = stateMap - provider.key
-            entryDispose.ref.onDisposed
+    return synchronized(state) {
+        var entry = state.getTypedOrNull(provider) ?: return@synchronized null
+        entry = entry.copy(listeners = entry.listeners - listener)
+        if (entry.shouldDispose) {
+            state = state - provider.key
+            entry.ref.onDisposed
         } else {
-            stateMap = stateMap + (provider.key to entryDispose)
+            state = state + (provider.key to entry)
             null
         }
     }
@@ -171,10 +168,10 @@ private fun <State> ProviderContainer.updateInternal(
     provider: Provider<State>,
     next: State
 ) {
-    synchronized(lock) {
-        var entry = stateMap.getTypedOrCreate(provider, this)
+    synchronized(state) {
+        var entry = state.getTypedOrCreate(provider, this)
         entry = entry.copy(state = next)
-        stateMap = stateMap + (provider.key to entry)
+        state = state + (provider.key to entry)
         entry.listeners
     }.forEach {
         it.invoke()
@@ -199,11 +196,11 @@ private fun <State> ProviderContainer.doReset(
 private fun <State> ProviderContainer.doResetInternal(
     provider: Provider<State>
 ) {
-    synchronized(lock) {
-        var entry = stateMap.getTypedOrNull(provider)
+    synchronized(state) {
+        var entry = state.getTypedOrNull(provider)
         if (entry != null) {
-            entry = entry.copy(state = doCreate(provider, entry.ref))
-            stateMap = stateMap + (provider.key to entry)
+            entry = entry.copy(state = provider.create(entry.ref))
+            state = state + (provider.key to entry)
             entry.listeners
         } else {
             emptyList()
@@ -213,28 +210,18 @@ private fun <State> ProviderContainer.doResetInternal(
     }
 }
 
-private fun <State> ProviderContainer.toRef(provider: Provider<State>): RefInternal<State> {
+private fun <State> ProviderContainer.toRef(
+    provider: Provider<State>
+): RefInternal<State> {
     return RefInternal(container = this, self = provider)
 }
 
-private fun <State> ProviderContainer.doCreate(
-    provider: Provider<State>,
+private fun <State> Provider<State>.create(
     ref: RefInternal<State>
 ): State {
-
-    if (createGuard == null) {
-        createGuard = provider
-    } else if (createGuard?.key == provider.key) {
-        throw Error("Cyclic dependency detected. $createGuard $provider depends on each other")
-    }
-
-    return when (provider) {
-        is AlwaysAliveProvider -> provider.create(ref)
-        is DisposableProvider -> provider.create(ref)
-    }.also {
-        if (createGuard?.key == provider.key) {
-            createGuard = null
-        }
+    return when (this) {
+        is AlwaysAliveProvider -> create(ref)
+        is DisposableProvider -> create(ref)
     }
 }
 
@@ -275,7 +262,7 @@ private fun <State> Map<ProviderKey, ProviderEntry<*>>.getTypedOrCreate(
     } else {
         val ref = container.toRef(provider)
         ProviderEntry(
-            state = container.doCreate(provider, ref),
+            state = provider.create(ref),
             ref = ref,
             provider = provider,
             listeners = emptySet()
