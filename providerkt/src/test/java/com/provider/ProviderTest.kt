@@ -170,7 +170,7 @@ class ProviderTest {
     @Test
     fun `read WHEN family provider THEN return provided argument`() {
         val container = ProviderContainer()
-        val provider = providerFamilyOf<String, String>(name = "name1") { _, arg ->
+        val provider = familyProviderOf<String, String>(name = "name1") { _, arg ->
             arg
         }
 
@@ -181,7 +181,7 @@ class ProviderTest {
     fun `read WHEN family provider and called with different arguments THEN return value for each`() {
         val container = ProviderContainer()
         var callCount = 0
-        val provider = providerFamilyOf<String, String>(name = "name1") { _, arg ->
+        val provider = familyProviderOf<String, String>(name = "name1") { _, arg ->
             "$arg $callCount".also {
                 callCount++
             }
@@ -250,7 +250,7 @@ class ProviderTest {
     fun `listen WHEN disposable provider and there is no more listener THEN remove entry`() {
         val container = ProviderContainer()
         var providerValue = "A"
-        val provider1 = providerDisposableOf<String>(name = "name1") {
+        val provider1 = disposableProviderOf<String>(name = "name1") {
             providerValue
         }
 
@@ -275,7 +275,7 @@ class ProviderTest {
     fun `listen WHEN disposable provider and disposed THEN then call onDisposed`() {
         val container = ProviderContainer()
         var onDisposeCallCount = 0
-        val provider1 = providerDisposableOf<String>(name = "name1") {
+        val provider1 = disposableProviderOf<String>(name = "name1") {
             it.onDisposed = {
                 onDisposeCallCount++
             }

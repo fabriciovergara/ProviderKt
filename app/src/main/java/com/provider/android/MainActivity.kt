@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.provider.android.provider.*
 import com.provider.android.ui.theme.ProviderKt_AndroidTheme
+import com.provider.*
 import kotlin.concurrent.thread
 
 var i = 0;
@@ -32,11 +33,11 @@ val B_provider = providerOf<String>(name = "B_provider") { ref ->
     "B ${aValue}"
 }
 
-val C_provider = providerFamilyOf<String, String>(name = "C_provider") { ref, arg ->
+val C_provider = familyProviderOf<String, String>(name = "C_provider") { ref, arg ->
     arg
 }
 
-val D_provider = providerDisposableFamilyOf<String, String>(name = "D_provider") { ref, arg ->
+val D_provider = disposableFamilyProviderOf<String, String>(name = "D_provider") { ref, arg ->
     ref.onDisposed = {
         Log.d("ProviderKt", "D_provider disposed $arg")
     }
@@ -47,7 +48,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ProviderContainerComposable {
+            ProviderScope {
                 ProviderKt_AndroidTheme {
                     // A surface container using the 'background' color from the theme
                     Surface(
@@ -55,7 +56,7 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colors.background
                     ) {
                         Column {
-                            ProviderContainerComposable {
+                            ProviderScope {
                                 val valueA by A_provider.observeAsState()
                                 val valueB by B_provider.observeAsState()
                                 val valueC by C_provider("Yolo").observeAsState()
@@ -81,6 +82,7 @@ fun Greeting(name: String) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
+    viewModelProviderOf()
     ProviderKt_AndroidTheme {
         Greeting("Android")
     }

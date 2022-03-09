@@ -12,19 +12,17 @@ interface ProviderListener {
     fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose
 }
 
-interface ProviderState<State> {
-    var state: State
-}
-
 typealias Dispose = () -> Unit
 
 typealias ProviderKey = String
 
 typealias Listener<State> = (State) -> Unit
 
-interface Ref : ProviderReader, ProviderWatcher, ProviderListener
+typealias FamilyProvider<State, Argument> = (Argument) -> Provider<State>
 
-interface ProviderRef<State> : Ref, ProviderState<State>
+interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener {
+    var state: State
+}
 
 interface DisposableProviderRef<State> : ProviderRef<State> {
     var onDisposed: Dispose
@@ -32,6 +30,8 @@ interface DisposableProviderRef<State> : ProviderRef<State> {
 
 sealed class Provider<State>(val key: ProviderKey, val name: String) {
     override fun toString(): String = "Provider($name)"
+
+    companion object Factory
 }
 
 internal class AlwaysAliveProvider<State>(
@@ -54,7 +54,19 @@ class ProviderOverride<State>(
 fun <State> Provider<State>.overrideWithProvider(
     override: Provider<State>
 ): ProviderOverride<State> {
-    return ProviderOverride(original = this, override = override)
+    return ProviderOverride(
+        original = this,
+        override = override
+    )
+}
+
+fun <State> Provider<State>.overrideWithValue(
+    override: State
+): ProviderOverride<State> {
+    return ProviderOverride(
+        original = this,
+        override = providerOf(name = name) { override }
+    )
 }
 
 internal fun providerKeyOf(
@@ -76,7 +88,7 @@ fun <State> providerOf(
     )
 }
 
-fun <State> providerDisposableOf(
+fun <State> disposableProviderOf(
     name: String,
     create: (DisposableProviderRef<State>) -> State
 ): Provider<State> {
@@ -88,10 +100,10 @@ fun <State> providerDisposableOf(
     )
 }
 
-fun <State, Argument> providerFamilyOf(
+fun <State, Argument> familyProviderOf(
     name: String,
     create: (ProviderRef<State>, Argument) -> State
-): (Argument) -> Provider<State> {
+): FamilyProvider<State, Argument> {
     val key = providerKeyOf()
     return { arg ->
         AlwaysAliveProvider(
@@ -102,10 +114,10 @@ fun <State, Argument> providerFamilyOf(
     }
 }
 
-fun <State, Argument> providerDisposableFamilyOf(
+fun <State, Argument> disposableFamilyProviderOf(
     name: String,
     create: (DisposableProviderRef<State>, Argument) -> State
-): (Argument) -> Provider<State> {
+): FamilyProvider<State, Argument> {
     val key = providerKeyOf()
     return { arg ->
         DisposableProvider(
