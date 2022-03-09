@@ -26,15 +26,22 @@ class ProviderContainer internal constructor(
 
 internal data class ProviderEntry<State>(
     val state: State,
-    val provider: Provider<State>,
-    val ref: RefInternal<State>,
+    val ref: ProviderRefInternal<State>,
     val listeners: Set<() -> Unit>,
 )
 
-internal class RefInternal<State>(
+internal class ProviderRefInternal<State>(
     private val container: ProviderContainer,
-    private val self: Provider<State>
+    val self: Provider<State>,
 ) : ProviderRef<State>, DisposableProviderRef<State> {
+
+    var onDisposed: Dispose = {}
+        set(value) = synchronized(this) {
+            field = value
+        }
+        get() = synchronized(this) {
+            field
+        }
 
     override fun <State> read(provider: Provider<State>): State {
         return container.read(provider)
@@ -55,7 +62,10 @@ internal class RefInternal<State>(
             container.doUpdate(self, value)
         }
 
-    override var onDisposed: Dispose = {}
+
+    override fun onDisposed(block: Dispose) {
+        onDisposed = block
+    }
 }
 
 
@@ -212,12 +222,12 @@ private fun <State> ProviderContainer.doResetInternal(
 
 private fun <State> ProviderContainer.toRef(
     provider: Provider<State>
-): RefInternal<State> {
-    return RefInternal(container = this, self = provider)
+): ProviderRefInternal<State> {
+    return ProviderRefInternal(container = this, self = provider)
 }
 
 private fun <State> Provider<State>.create(
-    ref: RefInternal<State>
+    ref: ProviderRefInternal<State>
 ): State {
     return when (this) {
         is AlwaysAliveProvider -> create(ref)
@@ -226,7 +236,7 @@ private fun <State> Provider<State>.create(
 }
 
 private val <State> ProviderEntry<State>.shouldDispose: Boolean
-    get() = provider is DisposableProvider<State> && listeners.isEmpty()
+    get() = ref.self is DisposableProvider<State> && listeners.isEmpty()
 
 private fun <State> Map<ProviderKey, Provider<*>>.getTypedOrNull(
     provider: Provider<State>
@@ -264,7 +274,6 @@ private fun <State> Map<ProviderKey, ProviderEntry<*>>.getTypedOrCreate(
         ProviderEntry(
             state = provider.create(ref),
             ref = ref,
-            provider = provider,
             listeners = emptySet()
         )
     }

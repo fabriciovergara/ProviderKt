@@ -25,7 +25,7 @@ interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener
 }
 
 interface DisposableProviderRef<State> : ProviderRef<State> {
-    var onDisposed: Dispose
+    fun onDisposed(block: Dispose)
 }
 
 sealed class Provider<State>(val key: ProviderKey, val name: String) {
