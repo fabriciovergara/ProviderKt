@@ -18,7 +18,6 @@ import com.providerkt.android.watch
 @Composable
 fun MainPage() {
     Scaffold(
-
         topBar = {
             TopAppBar(
                 title = {

@@ -209,10 +209,11 @@ private fun <State> ProviderContainerInternal.updateInternal(
                 observers.forEach { it.onUpdated(provider, entry.state, newEntry.state) }
             }
 
+            provider.notifyListeners()
         }
     }.invoke()
 
-    provider.notifyListeners()
+
 }
 
 private fun <State> ProviderContainerInternal.doReset(
