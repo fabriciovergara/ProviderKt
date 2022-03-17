@@ -60,7 +60,7 @@ internal class ProviderRefInternal<State>(
         return container.read(provider)
     }
 
-    override fun <State> listen(provider: Provider<State>, block: (State) -> Unit): Dispose {
+    override fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose {
         return container.listen(provider, block)
     }
 
@@ -239,12 +239,13 @@ private fun <State> ProviderContainerInternal.doResetInternal(
         if (entry != null) {
             entry = entry.copy(state = provider.create(entry.ref))
             state = state + (provider.key to entry)
+            {
+                provider.notifyListeners()
+            }
+        } else {
+            null
         }
-    }
-
-    synchronized(provider.listeners) {
-
-    }
+    }?.invoke()
 }
 
 private fun <State> ProviderContainerInternal.toRef(

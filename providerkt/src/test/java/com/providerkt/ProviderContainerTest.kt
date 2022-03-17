@@ -288,6 +288,35 @@ class ProviderContainerTest {
         assertEquals(1, onDisposeCallCount)
     }
 
+    @Test
+    fun `listen WHEN watch another that updates THEN rebuild the provider`() {
+        val container = providerContainerOf()
+        lateinit var update: (String) -> Unit
+        val provider1 = providerOf<String>(name = "name1") { ref ->
+            update = { ref.state = it }
+            "A"
+        }
+
+        val provider2 = providerOf<String>(name = "name1") { ref ->
+            val p1Value = ref.watch(provider1)
+            "B + $p1Value"
+        }
+
+        val updates = mutableMapOf<String, Int>()
+        container.listen(provider2) {
+            val current = updates[it] ?: 0
+            updates[it] = current + 1
+        }
+
+        update("C")
+        update("D")
+
+        val entries = updates.entries.toList()
+        assertEquals(3, entries.size)
+        assertEquals("B + A", entries[0].key)
+        assertEquals("B + C", entries[1].key)
+        assertEquals("B + D", entries[2].key)
+    }
 
     @Test
     fun `read WHEN contains cyclical dependency THEN throw error`() {
