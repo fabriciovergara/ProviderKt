@@ -12,7 +12,9 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "ProviderKt_Android"
+
+rootProject.name = "ProviderKt"
+
 include ':app'
-include ':providerkt'
 include ':providerkt_android'
+include ':providerkt'
