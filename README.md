@@ -49,7 +49,7 @@ fun MainPage() {
 
 ```kotlin
 // AppColorsProvider will rebuild every time isDarkModeProvider value changes and will also receive a extra arg sent by the callers
-val appColorsProvider = familityProviderOf<Colors, String?>(name = "appColorsProvider") { ref, arg -> 
+val appColorsProvider = familyProviderOf<Colors, String?>(name = "appColorsProvider") { ref, arg -> 
   if (arg == "dark") darkColors() else lightColors()
 }
 
