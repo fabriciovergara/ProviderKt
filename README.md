@@ -8,13 +8,13 @@ Solution inspired by [Recoil](https://github.com/facebookexperimental/Recoil), [
 
 ```kotlin 
 // Hold a boolean, false by default
-val isDarkModeProvider = providerOf<Boolean>(name = "isDarkModeProvider") {
+val isDarkModeProvider by provider<Boolean> {
     false
 }
 
 // AppColorsProvider will rebuild every time isDarkModeProvider value changes
-val appColorsProvider = providerOf<Colors>(name = "appColorsProvider") { ref-> 
-  val isDarkMode = ref.watch(isDarkModeProvider)
+val appColorsProvider by provider<Colors> {
+  val isDarkMode = watch(isDarkModeProvider)
   if (isDarkMode) darkColors() else lightColors()
 }
 
@@ -49,7 +49,7 @@ fun MainPage() {
 
 ```kotlin
 // AppColorsProvider will rebuild every time isDarkModeProvider value changes and will also receive a extra arg sent by the callers
-val appColorsProvider = familyProviderOf<Colors, String?>(name = "appColorsProvider") { ref, arg -> 
+val appColorsProvider by familyProvider<Colors, String?> { arg -> 
   if (arg == "dark") darkColors() else lightColors()
 }
 
@@ -72,28 +72,31 @@ fun AppMain() {
 }
 ```
 
-
-### Disposable and State
+### onDisposed and state
 
 ```kotlin
 
-val userRepositoryProvider = providerOf<UserRepository>(name = "userRepositoryProvider") { ref -> 
-    val something = ref.watch(somethingProvider)
+val userRepositoryProvider by provider<UserRepository> { 
+    val something = watch(somethingProvider)
     UserRepository(someInfo)
 }
 
-val userIdProvider = disposableProviderOf<String?>(name = "userIdProvider") { ref -> 
+val userIdProvider by provider<String> {
     // This provider listen userRepositoryProvider and register a listener, if userRepositoryProvider changes because 
     // somethingProvider was modified, then this provider will be disposed, on Disposed will be called
     // and listener will be unregistered. After that this provider will be recreated
-    val repository = ref.watch(userRepositoryProvider)
+    val repository = watch(userRepositoryProvider)
+    
+    // If this provider is recreated, then by calling get() you will receive the previous value
+    // If it's the first time this provider is being created, then get() will return null
+    val previousValue: String? = get()
     
     val listener = { userId -> 
         // If a new value is received in this listener, this provider state will be updated without recreating it
-        ref.state = userId
+       set(userId)
     }
     
-    ref.onDisposed { 
+    onDisposed { 
         userIdProvider.unregisterListener(listener)
     }
     
@@ -104,7 +107,7 @@ val userIdProvider = disposableProviderOf<String?>(name = "userIdProvider") { re
 @Composable
 fun AppMain() {
   ProviderScope {
-    // Create provider with input value, watch() returns darkColors
+    // Create provider with input value, watch() returns userId
     val userId by userIdProvider.watch()
     Text(text = "${userId}")
   }
@@ -112,10 +115,53 @@ fun AppMain() {
 ```
 
 
+### Disposable
+
+```kotlin
+
+val userIdProvider by provider<String?>(type = ProviderType.Disposable) {
+    val repository = FooRepository()
+    
+    // By defining provider of type Disposable when no one is listening this provider, 
+    // then onDispose will be called, it's state will not be cached for later queries
+    // and next it being listened it will recreate from scratch
+    onDisposed { 
+        repository.clear()
+    }
+    
+    repository.currentUser
+}
+
+@Composable
+fun AppMain() {
+  ProviderScope {
+
+    val listen = remember { mutableStateOf(true) }
+   
+    Button(
+        onClick = { listen.value = !listen.value}
+    ) {
+        Text(text = "Toggle")
+    } 
+    
+    // When not watching userIdProvider, the current value will be disposed
+    // and the provider will be recreated from scratch
+    val value = if (listen.value) {
+        val userId by userIdProvider.watch()
+        userId
+    } else {
+        "Not listening"
+    }
+    
+    Text(text = "${value}")
+}
+```
+
+
 ### Override
 
 ```kotlin
-val appColorsProvider = providerOf<Colors>(name = "appColorsProvider") { ref-> 
+val appColorsProvider by provider<Colors> { 
     lightColors()
 }
 
