@@ -107,10 +107,11 @@ fun <State> providerOf(
 }
 
 fun <State> provider(
+    name: String? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: Create<State>
 ): ReadOnlyProperty<Any?, Provider<State>> = ReadOnlyProperty { _, property ->
-    providerOf(name = property.name, type = type, create = create)
+    providerOf(name = name ?: property.name, type = type, create = create)
 }
 
 
@@ -131,10 +132,11 @@ fun <State, Argument> familyProviderOf(
 }
 
 fun <State, Argument> familyProvider(
+    name: String? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: CreateFamily<State, Argument>
 ): ReadOnlyProperty<Any?, FamilyProvider<State, Argument>> = ReadOnlyProperty { _, property ->
-    familyProviderOf(name = property.name, type = type, create = create)
+    familyProviderOf(name = name ?: property.name, type = type, create = create)
 }
 
 private fun providerKeyOf(
