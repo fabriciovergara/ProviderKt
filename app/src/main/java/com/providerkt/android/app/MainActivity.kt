@@ -10,12 +10,12 @@ import com.providerkt.android.ProviderScope
 import com.providerkt.android.app.ui.theme.*
 import com.providerkt.android.watch
 
-val isDarkModeProvider = providerOf<Boolean>(name = "isDarkModeProvider") {
+val isDarkModeProvider by provider<Boolean> {
     false
 }
 
-val colorsProvider = providerOf<Colors>(name = "colorsProvider") { ref ->
-    val isDarkMode = ref.watch(isDarkModeProvider)
+val colorsProvider by provider<Colors> {
+    val isDarkMode = watch(isDarkModeProvider)
     if (isDarkMode) DarkColorPalette else LightColorPalette
 }
 

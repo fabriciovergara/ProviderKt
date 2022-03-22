@@ -3,7 +3,7 @@ package com.providerkt
 import org.junit.Assert.*
 import org.junit.Test
 
-class ProviderContainerTest {
+class ProviderTest {
 
     @Test
     fun `read WHEN simple provider THEN return value`() {
@@ -76,7 +76,7 @@ class ProviderContainerTest {
         }
 
         val provider2 = providerOf<String>(name = "name2") {
-            "B + ${it.read(provider)}"
+            "B + ${read(provider)}"
         }
 
         assertEquals("B + A", container.read(provider2))
@@ -85,14 +85,14 @@ class ProviderContainerTest {
     @Test
     fun `read WHEN update value THEN return updated value`() {
         val container = providerContainerOf()
-        lateinit var update: () -> Unit
+        lateinit var update: (String) -> Unit
         val provider = providerOf<String>(name = "name") {
-            update = { it.state = "B" }
+            update = { set(it) }
             "A"
         }
 
         assertEquals("A", container.read(provider))
-        update()
+        update("B")
         assertEquals("B", container.read(provider))
     }
 
@@ -106,7 +106,7 @@ class ProviderContainerTest {
 
         val container2 = providerContainerOf()
         val provider2 = providerOf<String>(name = "name2") {
-            "B + ${it.read(provider1)}"
+            "B + ${read(provider1)}"
         }
 
         assertEquals("A", container2.read(provider1))
@@ -128,7 +128,7 @@ class ProviderContainerTest {
 
         val container2 = providerContainerOf(parent = container1)
         val provider2 = providerOf<String>(name = "name2") {
-            "B + ${it.read(provider1)}"
+            "B + ${read(provider1)}"
         }
 
         assertEquals("A", container1.read(provider1))
@@ -143,23 +143,23 @@ class ProviderContainerTest {
     @Test
     fun `read WHEN update value of watch dependency THEN return updated value`() {
         val container = providerContainerOf()
-        lateinit var update: () -> Unit
+        lateinit var update: (String) -> Unit
         val provider1 = providerOf<String>(name = "name1") {
-            update = { it.state = "B" }
+            update = { set("B") }
             "A"
         }
 
         var updateCount = 0
         val provider2 = providerOf<String>(name = "name2") {
             updateCount++
-            "B + ${it.watch(provider1)}"
+            "B + ${watch(provider1)}"
         }
 
         assertEquals("A", container.read(provider1))
         assertEquals("B + A", container.read(provider2))
         assertEquals(1, updateCount)
 
-        update()
+        update("B")
 
         assertEquals("B", container.read(provider1))
         assertEquals("B + B", container.read(provider2))
@@ -169,7 +169,7 @@ class ProviderContainerTest {
     @Test
     fun `read WHEN family provider THEN return provided argument`() {
         val container = providerContainerOf()
-        val provider = familyProviderOf<String, String>(name = "name1") { _, arg ->
+        val provider = familyProviderOf<String, String>(name = "name1") { arg ->
             arg
         }
 
@@ -180,7 +180,7 @@ class ProviderContainerTest {
     fun `read WHEN family provider and called with different arguments THEN return value for each`() {
         val container = providerContainerOf()
         var callCount = 0
-        val provider = familyProviderOf<String, String>(name = "name1") { _, arg ->
+        val provider = familyProviderOf<String, String>(name = "name1") { arg ->
             "$arg $callCount".also {
                 callCount++
             }
@@ -199,9 +199,9 @@ class ProviderContainerTest {
     @Test
     fun `listen WHEN update value THEN notify change`() {
         val container = providerContainerOf()
-        lateinit var update: () -> Unit
+        lateinit var update: (String) -> Unit
         val provider1 = providerOf<String>(name = "name1") {
-            update = { it.state = "B" }
+            update = { set(it) }
             "A"
         }
 
@@ -212,7 +212,7 @@ class ProviderContainerTest {
 
         assertEquals("A", value)
 
-        update()
+        update("B")
 
         assertEquals("B", value)
     }
@@ -220,9 +220,9 @@ class ProviderContainerTest {
     @Test
     fun `listen WHEN disposed THEN notify don't change`() {
         val container = providerContainerOf()
-        lateinit var update: () -> Unit
+        lateinit var update: (String) -> Unit
         val provider1 = providerOf<String>(name = "name1") {
-            update = { it.state = "B" }
+            update = { set(it) }
             "A"
         }
 
@@ -234,7 +234,7 @@ class ProviderContainerTest {
         assertEquals("A", value)
 
         dispose()
-        update()
+        update("B")
 
         assertEquals("A", value)
 
@@ -249,7 +249,7 @@ class ProviderContainerTest {
     fun `listen WHEN disposable provider and there is no more listener THEN remove entry`() {
         val container = providerContainerOf()
         var providerValue = "A"
-        val provider1 = disposableProviderOf<String>(name = "name1") {
+        val provider1 = providerOf<String>(name = "name1", type = ProviderType.Disposable) {
             providerValue
         }
 
@@ -271,11 +271,11 @@ class ProviderContainerTest {
     }
 
     @Test
-    fun `listen WHEN disposable provider and disposed THEN then call onDisposed`() {
+    fun `listen WHEN disposable provider and all listeners are disposed THEN then call onDisposed`() {
         val container = providerContainerOf()
         var onDisposeCallCount = 0
-        val provider1 = disposableProviderOf<String>(name = "name1") {
-            it.onDisposed {
+        val provider1 = providerOf<String>(name = "name1", type = ProviderType.Disposable) {
+            onDisposed {
                 onDisposeCallCount++
             }
             "A"
@@ -289,16 +289,45 @@ class ProviderContainerTest {
     }
 
     @Test
-    fun `listen WHEN watch another that updates THEN rebuild the provider`() {
+    fun `listen WHEN provider and is rebuilt due to dependency change THEN then call onDisposed`() {
         val container = providerContainerOf()
-        lateinit var update: (String) -> Unit
-        val provider1 = providerOf<String>(name = "name1") { ref ->
-            update = { ref.state = it }
+        lateinit var onChange: (String) -> Unit
+        val provider1 = providerOf<String>(name = "name1") {
+            onChange = { set(it) }
             "A"
         }
 
-        val provider2 = providerOf<String>(name = "name1") { ref ->
-            val p1Value = ref.watch(provider1)
+        var onDisposeCallCount = 0
+        var onDisposeCallValue: String? = null
+        val provider2 = providerOf<String>(name = "name2") {
+            val value1 = watch(provider1)
+            onDisposed {
+                onDisposeCallValue = value1
+                onDisposeCallCount++
+            }
+            value1
+        }
+
+        assertEquals("A", container.read(provider2))
+
+        onChange("B")
+
+        assertEquals("B", container.read(provider2))
+        assertEquals("B", onDisposeCallValue)
+        assertEquals(1, onDisposeCallCount)
+    }
+
+    @Test
+    fun `listen WHEN watch another that updates THEN rebuild the provider`() {
+        val container = providerContainerOf()
+        lateinit var update: (String) -> Unit
+        val provider1 = providerOf<String>(name = "name1") {
+            update = { set(it) }
+            "A"
+        }
+
+        val provider2 = providerOf<String>(name = "name1") {
+            val p1Value = watch(provider1)
             "B + $p1Value"
         }
 
@@ -326,11 +355,11 @@ class ProviderContainerTest {
         lateinit var provider2: Provider<String>
 
         provider1 = providerOf(name = "name1") {
-            it.read(provider2)
+            read(provider2)
         }
 
         provider2 = providerOf(name = "name2") {
-            it.read(provider1)
+            read(provider1)
         }
 
         assertThrows(Error::class.java) {
@@ -346,11 +375,11 @@ class ProviderContainerTest {
         lateinit var provider2: Provider<String>
 
         provider1 = providerOf(name = "name1") {
-            it.read(provider2)
+            read(provider2)
         }
 
         provider2 = providerOf(name = "name2") {
-            it.read(provider1)
+            read(provider1)
         }
 
         assertThrows(Error::class.java) {
@@ -373,7 +402,7 @@ class ProviderContainerTest {
     @Test
     fun `update WHEN family provider THEN update value`() {
         val container = providerContainerOf()
-        val provider = familyProviderOf<String, String>(name = "name") { ref, arg ->
+        val provider = familyProviderOf<String, String>(name = "name") { arg ->
             arg
         }
 
@@ -401,7 +430,7 @@ class ProviderContainerTest {
             observers = setOf(observer)
         )
 
-        val provider = providerOf<String>(name = "name") { ref ->
+        val provider = providerOf<String>(name = "name") {
             "A"
         }
 
@@ -413,5 +442,41 @@ class ProviderContainerTest {
         assertSame(provider, notifiedProvider)
         assertEquals("A", notifiedValue)
         assertEquals(1, notifiedCount)
+    }
+
+    @Test
+    fun `read WHEN provider is not yet create and try to get self state THEN return null`() {
+        val container = providerContainerOf()
+        var value: String? = "SomethingElse"
+        val provider = providerOf<String>(name = "name") {
+            value = get()
+            "A"
+        }
+
+        assertEquals("A", container.read(provider))
+        assertNull(value)
+    }
+
+    @Test
+    fun `update WHEN provider was already created and try to get self state THEN return previous value`() {
+        val container = providerContainerOf()
+        var value: String? = "SomethingElse"
+        val provider1 = providerOf<String>(name = "name") {
+            "A"
+        }
+
+        val provider2 = providerOf<String>(name = "name") {
+            value = get()
+            val value1 = watch(provider1)
+            value1
+        }
+
+        assertEquals("A", container.read(provider2))
+        assertNull(value)
+
+        container.update(provider1, "B")
+
+        assertEquals("B", container.read(provider2))
+        assertEquals("A", value)
     }
 }

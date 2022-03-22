@@ -9,10 +9,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.providerkt.ProviderType
 import com.providerkt.android.watch
-import com.providerkt.disposableProviderOf
+import com.providerkt.provider
 
-val toDoListProvider = disposableProviderOf<List<String>>(name = "toDoListProvider") {
+val toDoListProvider by provider<List<String>>(type = ProviderType.Disposable) {
     listOf()
 }
 

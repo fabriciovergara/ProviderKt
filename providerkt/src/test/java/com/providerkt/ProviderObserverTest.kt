@@ -85,7 +85,7 @@ class ProviderObserverTest {
             observers = setOf(observer)
         )
 
-        val provider = disposableProviderOf<String>(name = "name") {
+        val provider = providerOf<String>(name = "name", type = ProviderType.Disposable) {
             "A"
         }
 
