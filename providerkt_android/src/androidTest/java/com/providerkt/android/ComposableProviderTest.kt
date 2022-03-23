@@ -25,7 +25,7 @@ internal class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_just_watch_THEN_display_value() {
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             "valueTest"
         }
 
@@ -44,7 +44,7 @@ internal class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_watch_family_THEN_display_value() {
-        val valueProvider = familyProviderOf<String, String>(name = "") { arg ->
+        val valueProvider by familyProvider<String, String>() { arg ->
             arg
         }
 
@@ -65,14 +65,13 @@ internal class ComposableProviderTest {
     fun watch_WHEN_watch_disposable_family_and_change_value_THEN_display_value_and_dispose_old() {
         var disposedCount = 0
         var disposedValue: String? = null
-        val valueProvider =
-            familyProviderOf<String, String>(name = "", type = ProviderType.Disposable) { arg ->
-                onDisposed {
-                    disposedCount++
-                    disposedValue = arg
-                }
-                arg
+        val valueProvider by familyProvider<String, String>(type = ProviderType.Disposable) { arg ->
+            onDisposed {
+                disposedCount++
+                disposedValue = arg
             }
+            arg
+        }
 
         composeTestRule.setContent {
             ProviderScope {
@@ -114,7 +113,7 @@ internal class ComposableProviderTest {
     @Test
     fun watch_WHEN_value_changed_THEN_update_displayed_value() {
         lateinit var updateValue: (String) -> Unit
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             updateValue = { set(it) }
             "valueTest"
         }
@@ -139,11 +138,11 @@ internal class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_by_provider_THEN_display_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             "valueTest"
         }
 
-        val overrideProvider = providerOf<String>(name = "") {
+        val overrideProvider by provider<String> {
             "valueTest2"
         }
 
@@ -166,7 +165,7 @@ internal class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_by_value_THEN_display_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             "valueTest"
         }
 
@@ -189,7 +188,7 @@ internal class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_overridden_multiple_times_THEN_display_last_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             "valueTest"
         }
 
@@ -224,7 +223,7 @@ internal class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_changes_THEN_display_new_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             "valueTest"
         }
 
@@ -285,12 +284,12 @@ internal class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_changes_THEN_reset_child_providers() {
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             "valueTest"
         }
 
         lateinit var updateValue2: (String) -> Unit
-        val value2Provider = providerOf<String>(name = "") {
+        val value2Provider by provider<String> {
             updateValue2 = { set(it) }
             "value2Test"
         }
@@ -354,7 +353,7 @@ internal class ComposableProviderTest {
 
     @Test
     fun listen_WHEN_just_listen_THEN_receive_value() {
-        val valueProvider = providerOf<String>(name = "") {
+        val valueProvider by provider<String> {
             "valueTest"
         }
 

@@ -22,7 +22,7 @@ internal class ProviderObserverTest {
             observers = setOf(observer)
         )
 
-        val provider = providerOf<String>(name = "name") {
+        val provider by provider<String> {
             "A"
         }
 
@@ -55,7 +55,7 @@ internal class ProviderObserverTest {
             observers = setOf(observer)
         )
 
-        val provider = providerOf<String>(name = "name") {
+        val provider by provider<String> {
             "A"
         }
 
@@ -85,7 +85,7 @@ internal class ProviderObserverTest {
             observers = setOf(observer)
         )
 
-        val provider = providerOf<String>(name = "name", type = ProviderType.Disposable) {
+        val provider by provider<String>( type = ProviderType.Disposable) {
             "A"
         }
 
@@ -130,7 +130,7 @@ internal class ProviderObserverTest {
             parent = parent
         )
 
-        val provider = providerOf<String>(name = "name") {
+        val provider by provider<String> {
             "A"
         }
 

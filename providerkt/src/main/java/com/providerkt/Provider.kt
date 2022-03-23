@@ -18,10 +18,6 @@ public interface ProviderUpdater {
     public fun <State> update(provider: Provider<State>, value: State)
 }
 
-public interface ProviderDispose {
-    public fun onDisposed(block: Dispose)
-}
-
 public interface ProviderObserver {
     public fun onCreated(provider: Provider<*>, value: Any?): Unit = Unit
     public fun onUpdated(provider: Provider<*>, old: Any?, value: Any?): Unit = Unit
@@ -35,8 +31,12 @@ public typealias Create<State> = ProviderRef<State>.() -> State
 public typealias CreateFamily<State, Argument> = ProviderRef<State>.(arg: Argument) -> State
 public typealias FamilyProvider<State, Argument> = (arg: Argument) -> Provider<State>
 
-public interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener,
-    ProviderDispose {
+public class FamilyName<Argument>(public val block: (Argument) -> String) {
+    public constructor(name: String) : this({ name })
+}
+
+public interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener {
+    public fun onDisposed(block: Dispose)
     public fun set(value: State)
     public fun get(): State?
 }
@@ -114,14 +114,14 @@ public fun <State> provider(
 }
 
 public fun <State, Argument> familyProviderOf(
-    name: String,
+    name: FamilyName<Argument>,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: CreateFamily<State, Argument>
 ): FamilyProvider<State, Argument> {
     val key = providerKeyOf()
     return { arg ->
         Provider(
-            name = name,
+            name = name.block(arg),
             key = providerKeyOf(key, arg),
             type = type,
             create = { create(this, arg) }
@@ -130,12 +130,13 @@ public fun <State, Argument> familyProviderOf(
 }
 
 public fun <State, Argument> familyProvider(
-    name: String? = null,
+    name: FamilyName<Argument>? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: CreateFamily<State, Argument>
 ): ReadOnlyProperty<Any?, FamilyProvider<State, Argument>> = ReadOnlyProperty { _, property ->
-    familyProviderOf(name = name ?: property.name, type = type, create = create)
+    familyProviderOf(name = name ?: FamilyName(property.name), type = type, create = create)
 }
+
 
 private fun providerKeyOf(
     base: ProviderKey = "${Any().hashCode()}",
