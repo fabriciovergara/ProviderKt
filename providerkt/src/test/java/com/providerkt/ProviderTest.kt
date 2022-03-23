@@ -81,9 +81,62 @@ internal class ProviderTest {
     }
 
     @Test
+    fun `read WHEN depends on override provider which throws THEN don't throw`() {
+        val provider by provider<String> {
+            error("Should be overridden")
+        }
+
+        val providerOverride by provider<String> {
+            "B"
+        }
+
+        val provider2 by provider<String> {
+            watch(provider)
+        }
+
+        val container = providerContainerOf(
+            overrides = setOf(
+                provider.overrideWithProvider(providerOverride)
+            )
+        )
+
+        assertEquals("B", container.read(provider2))
+    }
+
+    @Test
+    fun `read WHEN depends on override provider which throws from child container THEN don't throw`() {
+        val provider by provider<String> {
+            error("Should be overridden")
+        }
+
+        val providerOverride by provider<String> {
+            "B"
+        }
+
+        val provider2 by provider<String> {
+            watch(provider)
+        }
+
+        val container = providerContainerOf()
+
+        val container2 = providerContainerOf(
+            parent = container,
+            overrides = setOf(
+                provider.overrideWithProvider(providerOverride)
+            )
+        )
+
+        assertEquals("B", container2.read(provider2))
+    }
+
+    @Test
     fun `read WHEN override multiple in multiple containers THEN return the override value from last container`() {
         val provider by provider<String> {
-            "A"
+            error("Should be overridden")
+        }
+
+        val provider2 by provider<String> {
+           watch(provider)
         }
 
         val providerOverride by provider<String> {
@@ -111,7 +164,7 @@ internal class ProviderTest {
             parent = container2
         )
 
-        assertEquals("C", container3.read(provider))
+        assertEquals("C", container3.read(provider2))
     }
 
     @Test

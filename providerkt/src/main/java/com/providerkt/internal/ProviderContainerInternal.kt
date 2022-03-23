@@ -1,10 +1,12 @@
-package com.providerkt
+package com.providerkt.internal
+
+import com.providerkt.*
 
 internal class ProviderContainerInternal private constructor(
     val parent: ProviderContainerInternal?,
     val overrides: Map<ProviderKey, Provider<*>>,
     var state: Map<ProviderKey, ProviderEntry<*>>,
-    private val observers: Set<ProviderObserver>
+    val observers: Set<ProviderObserver>
 ) : ProviderContainer() {
 
     val root: ProviderContainerInternal = parent?.root ?: this
@@ -21,23 +23,23 @@ internal class ProviderContainerInternal private constructor(
     )
 
     override fun <State> read(provider: Provider<State>): State {
-        return doRead(provider, observers)
+        return doRead(provider, this)
     }
 
     override fun <State> update(provider: Provider<State>, value: State) {
-        doUpdate(provider, value, observers)
+        doUpdate(provider, value, this)
     }
 
     override fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose {
-        return doListen(provider, block, observers)
+        return doListen(provider, block, this)
     }
 
     fun <State, WatchState> watch(origin: Provider<State>, provider: Provider<WatchState>) {
-        return doWatch(origin, provider, observers)
+        return doWatch(origin, provider, this)
     }
 
     fun <State> selfUpdate(provider: Provider<State>, value: State) {
-        return doSelfUpdate(provider, value, observers)
+        return doSelfUpdate(provider, value, this)
     }
 
     fun <State> selfRead(provider: Provider<State>): State? {
@@ -110,30 +112,30 @@ private fun <State> ProviderContainerInternal.doSelfRead(
 
 private fun <State> ProviderContainerInternal.doRead(
     provider: Provider<State>,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ): State {
     val providerOverride = overrides.getTypedOrNull(provider)
     if (providerOverride != null) {
-        return doReadInternal(providerOverride, observers)
+        return doReadInternal(providerOverride, origin)
     }
 
     if (parent == null) {
-        return doReadInternal(provider, observers)
+        return doReadInternal(provider, origin)
     }
 
-    return parent.doRead(provider, observers)
+    return parent.doRead(provider, origin)
 }
 
 private fun <State> ProviderContainerInternal.doReadInternal(
     provider: Provider<State>,
-    observers: Set<ProviderObserver>,
+    origin: ProviderContainerInternal,
 ): State {
     val (state, onCreated) = synchronized(lock) {
-        val (created, entry) = state.getTypedOrCreate(provider, this)
+        val (created, entry) = state.getTypedOrCreate(provider, origin)
         state = state + (provider.key to entry)
         entry.state to {
             if (created) {
-                observers.forEach { it.onCreated(provider, entry.state) }
+                origin.observers.onCreated(provider, entry.state)
             }
         }
     }
@@ -145,37 +147,37 @@ private fun <State> ProviderContainerInternal.doReadInternal(
 private fun <State> ProviderContainerInternal.doListen(
     provider: Provider<State>,
     block: Listener<State>,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ): Dispose {
     val providerOverride = overrides.getTypedOrNull(provider)
     if (providerOverride != null) {
-        return doListenInternal(providerOverride, block, observers)
+        return doListenInternal(providerOverride, block, origin)
     }
 
     if (parent == null) {
-        return doListenInternal(provider, block, observers)
+        return doListenInternal(provider, block, origin)
     }
 
-    return parent.doListen(provider, block, observers)
+    return parent.doListen(provider, block, origin)
 }
 
 private fun <State> ProviderContainerInternal.doListenInternal(
     provider: Provider<State>,
     block: Listener<State>,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ): Dispose {
     val listener = { block(read(provider)) }
     provider.addListener(listener)
     listener.invoke()
     return {
-        doDisposeListen(provider, listener, observers)
+        doDisposeListen(provider, listener, origin)
     }
 }
 
 internal fun <State> ProviderContainerInternal.doDisposeListen(
     provider: Provider<State>,
     listener: () -> Unit,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ) {
     val listeners = provider.removeListener(listener)
     synchronized(lock) {
@@ -183,7 +185,7 @@ internal fun <State> ProviderContainerInternal.doDisposeListen(
         if (entry.ref.pSelf.type == ProviderType.Disposable && listeners.isEmpty()) {
             state = state - provider.key
             {
-                observers.forEach { it.onDisposed(provider, entry.state) }
+                origin.observers.onDisposed(provider, entry.state)
                 entry.ref.onDisposed()
             }
         } else {
@@ -193,15 +195,15 @@ internal fun <State> ProviderContainerInternal.doDisposeListen(
 }
 
 internal fun <State, WatchState> ProviderContainerInternal.doWatch(
-    origin: Provider<State>,
+    self: Provider<State>,
     provider: Provider<WatchState>,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ) {
     var dispose: Dispose? = null
     dispose = listen(provider) {
         dispose?.run {
             invoke()
-            doReset(origin, observers)
+            doReset(self, origin)
         }
     }
 }
@@ -209,7 +211,7 @@ internal fun <State, WatchState> ProviderContainerInternal.doWatch(
 internal fun <State> ProviderContainerInternal.doSelfUpdate(
     provider: Provider<State>,
     next: State,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ) {
     synchronized(lock) {
         val entry = state.getTypedOrNull(provider)
@@ -217,7 +219,7 @@ internal fun <State> ProviderContainerInternal.doSelfUpdate(
             val newEntry = entry.copy(state = next)
             state = state + (provider.key to newEntry)
             {
-                observers.forEach { it.onUpdated(provider, entry.state, newEntry.state) }
+                origin.observers.onUpdated(provider, entry.state, newEntry.state)
                 provider.notifyListeners()
             }
         } else {
@@ -229,34 +231,34 @@ internal fun <State> ProviderContainerInternal.doSelfUpdate(
 internal fun <State> ProviderContainerInternal.doUpdate(
     provider: Provider<State>,
     next: State,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ) {
     val providerOverride = overrides.getTypedOrNull(provider)
     if (providerOverride != null) {
-        return updateInternal(providerOverride, next, observers)
+        return updateInternal(providerOverride, next, origin)
     }
 
     if (parent == null) {
-        return updateInternal(provider, next, observers)
+        return updateInternal(provider, next, origin)
     }
 
-    return parent.doUpdate(provider, next, observers)
+    return parent.doUpdate(provider, next, origin)
 }
 
 private fun <State> ProviderContainerInternal.updateInternal(
     provider: Provider<State>,
     next: State,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ) {
     synchronized(lock) {
-        val (created, entry) = state.getTypedOrCreate(provider, this)
+        val (created, entry) = state.getTypedOrCreate(provider, origin)
         val newEntry = entry.copy(state = next)
         state = state + (provider.key to newEntry)
         {
             if (created) {
-                observers.forEach { it.onCreated(provider, newEntry.state) }
+                origin.observers.onCreated(provider, newEntry.state)
             } else {
-                observers.forEach { it.onUpdated(provider, entry.state, newEntry.state) }
+                origin.observers.onUpdated(provider, entry.state, newEntry.state)
             }
 
             provider.notifyListeners()
@@ -268,23 +270,23 @@ private fun <State> ProviderContainerInternal.updateInternal(
 
 private fun <State> ProviderContainerInternal.doReset(
     provider: Provider<State>,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ) {
     val providerOverride = overrides.getTypedOrNull(provider)
     if (providerOverride != null) {
-        return doResetInternal(providerOverride, observers)
+        return doResetInternal(providerOverride, origin)
     }
 
     if (parent == null) {
-        return doResetInternal(provider, observers)
+        return doResetInternal(provider, origin)
     }
 
-    return parent.doReset(provider, observers)
+    return parent.doReset(provider, origin)
 }
 
 private fun <State> ProviderContainerInternal.doResetInternal(
     provider: Provider<State>,
-    observers: Set<ProviderObserver>
+    origin: ProviderContainerInternal
 ) {
     synchronized(lock) {
         val entry = state.getTypedOrNull(provider)
@@ -293,8 +295,8 @@ private fun <State> ProviderContainerInternal.doResetInternal(
             state = state + (provider.key to newEntry)
             {
                 entry.ref.onDisposed()
+                origin.observers.onDisposed(provider, entry.state)
                 provider.notifyListeners()
-                observers.forEach { it.onDisposed(provider, entry.state) }
             }
         } else {
             null
@@ -368,4 +370,16 @@ private fun <State> Map<ProviderKey, ProviderEntry<*>>.getTypedOrCreate(
             ref = ref
         )
     }
+}
+
+private fun Set<ProviderObserver>.onCreated(provider: Provider<*>, value: Any?) {
+    forEach { it.onCreated(provider, value) }
+}
+
+private fun Set<ProviderObserver>.onUpdated(provider: Provider<*>, old: Any?, value: Any?) {
+    forEach { it.onUpdated(provider, old, value) }
+}
+
+private fun Set<ProviderObserver>.onDisposed(provider: Provider<*>, value: Any?) {
+    forEach { it.onDisposed(provider, value) }
 }

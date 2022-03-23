@@ -1,5 +1,6 @@
 package com.providerkt
 
+import com.providerkt.internal.ProviderContainerInternal
 import com.providerkt.internal.cached
 import kotlin.properties.ReadOnlyProperty
 
