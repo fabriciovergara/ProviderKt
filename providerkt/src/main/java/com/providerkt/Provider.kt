@@ -1,70 +1,69 @@
 package com.providerkt
 
 import kotlin.properties.ReadOnlyProperty
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 
-interface ProviderReader {
-    fun <State> read(provider: Provider<State>): State
+public interface ProviderReader {
+    public fun <State> read(provider: Provider<State>): State
 }
 
-interface ProviderWatcher {
-    fun <State> watch(provider: Provider<State>): State
+public interface ProviderWatcher {
+    public fun <State> watch(provider: Provider<State>): State
 }
 
-interface ProviderListener {
-    fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose
+public interface ProviderListener {
+    public fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose
 }
 
-interface ProviderUpdater {
-    fun <State> update(provider: Provider<State>, value: State)
+public interface ProviderUpdater {
+    public fun <State> update(provider: Provider<State>, value: State)
 }
 
-interface ProviderDispose {
-    fun onDisposed(block: Dispose)
+public interface ProviderDispose {
+    public fun onDisposed(block: Dispose)
 }
 
-interface ProviderObserver {
-    fun onCreated(provider: Provider<*>, value: Any?) = Unit
-    fun onUpdated(provider: Provider<*>, old: Any?, value: Any?) = Unit
-    fun onDisposed(provider: Provider<*>, value: Any?) = Unit
+public interface ProviderObserver {
+    public fun onCreated(provider: Provider<*>, value: Any?): Unit = Unit
+    public fun onUpdated(provider: Provider<*>, old: Any?, value: Any?): Unit = Unit
+    public fun onDisposed(provider: Provider<*>, value: Any?): Unit = Unit
 }
 
-typealias Dispose = () -> Unit
-typealias ProviderKey = String
-typealias Listener<State> = (state: State) -> Unit
-typealias Create<State> = ProviderRef<State>.() -> State
-typealias CreateFamily<State, Argument> = ProviderRef<State>.(arg: Argument) -> State
-typealias FamilyProvider<State, Argument> = (arg: Argument) -> Provider<State>
+public typealias Dispose = () -> Unit
+public typealias ProviderKey = String
+public typealias Listener<State> = (state: State) -> Unit
+public typealias Create<State> = ProviderRef<State>.() -> State
+public typealias CreateFamily<State, Argument> = ProviderRef<State>.(arg: Argument) -> State
+public typealias FamilyProvider<State, Argument> = (arg: Argument) -> Provider<State>
 
-interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener, ProviderDispose {
-    fun set(value: State)
-    fun get(): State?
+public interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener,
+    ProviderDispose {
+    public fun set(value: State)
+    public fun get(): State?
 }
 
-sealed class ProviderContainer : ProviderListener, ProviderReader, ProviderUpdater
+public sealed class ProviderContainer : ProviderListener, ProviderReader, ProviderUpdater
 
-enum class ProviderType {
+public enum class ProviderType {
     AlwaysAlive,
     Disposable
 }
 
-class Provider<State>(
-    val key: ProviderKey,
-    val name: String,
-    val type: ProviderType,
+public class Provider<State>(
+    public val key: ProviderKey,
+    public val name: String,
+    public val type: ProviderType,
     internal val create: Create<State>
 ) {
     internal var listeners: Set<() -> Unit> = setOf()
     override fun toString(): String = "Provider($key, $name, $type)"
 }
 
-class ProviderOverride<State>(
-    val original: Provider<State>,
-    val override: Provider<State>
+public class ProviderOverride<State>(
+    public val original: Provider<State>,
+    public val override: Provider<State>
 )
 
-fun providerContainerOf(
+public fun providerContainerOf(
     parent: ProviderContainer? = null,
     overrides: Set<ProviderOverride<*>> = setOf(),
     observers: Set<ProviderObserver> = setOf()
@@ -77,14 +76,14 @@ fun providerContainerOf(
     observers = observers
 )
 
-fun <State> Provider<State>.overrideWithProvider(
+public fun <State> Provider<State>.overrideWithProvider(
     override: Provider<State>
 ): ProviderOverride<State> = ProviderOverride(
     original = this,
     override = override
 )
 
-fun <State> Provider<State>.overrideWithValue(
+public fun <State> Provider<State>.overrideWithValue(
     override: State
 ): ProviderOverride<State> = ProviderOverride(
     original = this,
@@ -92,7 +91,7 @@ fun <State> Provider<State>.overrideWithValue(
 )
 
 
-fun <State> providerOf(
+public fun <State> providerOf(
     name: String,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: Create<State>,
@@ -106,7 +105,7 @@ fun <State> providerOf(
     )
 }
 
-fun <State> provider(
+public fun <State> provider(
     name: String? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: Create<State>
@@ -114,8 +113,7 @@ fun <State> provider(
     providerOf(name = name ?: property.name, type = type, create = create)
 }
 
-
-fun <State, Argument> familyProviderOf(
+public fun <State, Argument> familyProviderOf(
     name: String,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: CreateFamily<State, Argument>
@@ -124,14 +122,14 @@ fun <State, Argument> familyProviderOf(
     return { arg ->
         Provider(
             name = name,
-            key = key,
+            key = providerKeyOf(key, arg),
             type = type,
             create = { create(this, arg) }
         )
     }
 }
 
-fun <State, Argument> familyProvider(
+public fun <State, Argument> familyProvider(
     name: String? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: CreateFamily<State, Argument>

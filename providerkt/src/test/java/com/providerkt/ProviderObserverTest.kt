@@ -3,7 +3,7 @@ package com.providerkt
 import org.junit.Assert.*
 import org.junit.Test
 
-class ProviderObserverTest {
+internal class ProviderObserverTest {
 
     @Test
     fun `onCreated WHEN observer is read for the first time THEN notify create`() {

@@ -1,14 +1,94 @@
 buildscript {
-    ext {
-        compose_version = '1.1.1'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath libs.gradle.android.buildtools
+        classpath libs.gradle.kotlin
+        classpath libs.gradle.kotlinter
     }
 }
 
 plugins {
-    id 'com.android.application' version '7.1.2' apply false
-    id 'com.android.library' version '7.1.2' apply false
-    id 'org.jetbrains.kotlin.android' version '1.6.10' apply false
-    id 'org.jetbrains.kotlin.jvm' version '1.6.10' apply false
+    id "io.github.gradle-nexus.publish-plugin" version "1.1.0"
+    id "com.autonomousapps.dependency-analysis" version "0.73.0"
+    id 'org.jetbrains.kotlinx.binary-compatibility-validator' version '0.8.0-RC'
+}
+
+dependencyAnalysis {
+    strictMode(true)
+    issues {
+        all {
+            ignoreKtx(true)
+        }
+    }
+}
+
+apiValidation {
+    ignoredProjects += [
+            "app"
+    ]
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    afterEvaluate { project ->
+        if (!project.hasProperty('android')) {
+            return
+        }
+
+        android {
+            compileSdk 31
+
+            defaultConfig {
+                minSdk 21
+                targetSdk 31
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                }
+            }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+
+            kotlinOptions {
+                jvmTarget = JavaVersion.VERSION_1_8.toString()
+                freeCompilerArgs += [
+                        "-Xopt-in=kotlin.RequiresOptIn",
+                        "-Xexplicit-api=strict"
+                ]
+            }
+
+            packagingOptions {
+                resources {
+                    excludes += '/META-INF/*'
+                }
+            }
+        }
+    }
+
+
+}
+
+subprojects {
+    // KTLint plugin: https://github.com/jeremymailen/kotlinter-gradle
+    plugins.apply("org.jmailen.kotlinter")
+}
+
+apply from: "$rootDir/scripts/publish-root.gradle"
+
+task check {
+    dependsOn "installKotlinterPrePushHook"
 }
 
 task clean(type: Delete) {

@@ -11,7 +11,6 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.providerkt.*
-import org.junit.Assert
 import org.junit.Assert.assertEquals
 
 import org.junit.Test
@@ -19,7 +18,7 @@ import org.junit.Rule
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class ComposableProviderTest {
+internal class ComposableProviderTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -45,7 +44,7 @@ class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_watch_family_THEN_display_value() {
-        val valueProvider = familyProviderOf<String, String>(name = "") { ref, arg ->
+        val valueProvider = familyProviderOf<String, String>(name = "") { arg ->
             arg
         }
 
@@ -63,16 +62,17 @@ class ComposableProviderTest {
     }
 
     @Test
-    fun watch_WHEN_watch_family_and_change_value_THEN_display_value_and_dispose_old() {
+    fun watch_WHEN_watch_disposable_family_and_change_value_THEN_display_value_and_dispose_old() {
         var disposedCount = 0
         var disposedValue: String? = null
-        val valueProvider = disposableFamilyProviderOf<String, String>(name = "") { ref, arg ->
-            ref.onDisposed {
-                disposedCount++
-                disposedValue = arg
+        val valueProvider =
+            familyProviderOf<String, String>(name = "", type = ProviderType.Disposable) { arg ->
+                onDisposed {
+                    disposedCount++
+                    disposedValue = arg
+                }
+                arg
             }
-            arg
-        }
 
         composeTestRule.setContent {
             ProviderScope {
@@ -84,7 +84,9 @@ class ComposableProviderTest {
                 )
 
                 Button(
-                    onClick = { input.value = "valueTest2" },
+                    onClick = {
+                        input.value = "valueTest2"
+                    },
                     modifier = Modifier.testTag("button")
                 ) {
                     Text(text = "Click")
@@ -100,7 +102,9 @@ class ComposableProviderTest {
             .performClick()
             .assertIsDisplayed()
 
-        composeTestRule.onNodeWithText("valueTest2")
+        composeTestRule
+            .onNodeWithTag("text1")
+            .assert(hasText("valueTest2"))
             .assertIsDisplayed()
 
         assertEquals("valueTest", disposedValue)
@@ -110,8 +114,8 @@ class ComposableProviderTest {
     @Test
     fun watch_WHEN_value_changed_THEN_update_displayed_value() {
         lateinit var updateValue: (String) -> Unit
-        val valueProvider = providerOf<String>(name = "") { ref ->
-            updateValue = { ref.state = it }
+        val valueProvider = providerOf<String>(name = "") {
+            updateValue = { set(it) }
             "valueTest"
         }
 
@@ -135,11 +139,11 @@ class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_by_provider_THEN_display_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") { ref ->
+        val valueProvider = providerOf<String>(name = "") {
             "valueTest"
         }
 
-        val overrideProvider = providerOf<String>(name = "") { ref ->
+        val overrideProvider = providerOf<String>(name = "") {
             "valueTest2"
         }
 
@@ -162,7 +166,7 @@ class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_by_value_THEN_display_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") { ref ->
+        val valueProvider = providerOf<String>(name = "") {
             "valueTest"
         }
 
@@ -185,7 +189,7 @@ class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_overridden_multiple_times_THEN_display_last_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") { ref ->
+        val valueProvider = providerOf<String>(name = "") {
             "valueTest"
         }
 
@@ -220,7 +224,7 @@ class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_changes_THEN_display_new_overridden_value() {
-        val valueProvider = providerOf<String>(name = "") { ref ->
+        val valueProvider = providerOf<String>(name = "") {
             "valueTest"
         }
 
@@ -281,13 +285,13 @@ class ComposableProviderTest {
 
     @Test
     fun watch_WHEN_override_changes_THEN_reset_child_providers() {
-        val valueProvider = providerOf<String>(name = "") { ref ->
+        val valueProvider = providerOf<String>(name = "") {
             "valueTest"
         }
 
         lateinit var updateValue2: (String) -> Unit
-        val value2Provider = providerOf<String>(name = "") { ref ->
-            updateValue2 = { ref.state = it }
+        val value2Provider = providerOf<String>(name = "") {
+            updateValue2 = { set(it) }
             "value2Test"
         }
 

@@ -1,0 +1,83 @@
+public final class com/providerkt/BuildConfig {
+	public static final field BUILD_TYPE Ljava/lang/String;
+	public static final field DEBUG Z
+	public static final field LIBRARY_PACKAGE_NAME Ljava/lang/String;
+	public fun <init> ()V
+}
+
+public final class com/providerkt/Provider {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function1;)V
+	public final fun getKey ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getType ()Lcom/providerkt/ProviderType;
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class com/providerkt/ProviderContainer : com/providerkt/ProviderListener, com/providerkt/ProviderReader, com/providerkt/ProviderUpdater {
+}
+
+public abstract interface class com/providerkt/ProviderDispose {
+	public abstract fun onDisposed (Lkotlin/jvm/functions/Function0;)V
+}
+
+public final class com/providerkt/ProviderKt {
+	public static final fun familyProvider (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function2;)Lkotlin/properties/ReadOnlyProperty;
+	public static synthetic fun familyProvider$default (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)Lkotlin/properties/ReadOnlyProperty;
+	public static final fun familyProviderOf (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function2;)Lkotlin/jvm/functions/Function1;
+	public static synthetic fun familyProviderOf$default (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)Lkotlin/jvm/functions/Function1;
+	public static final fun overrideWithProvider (Lcom/providerkt/Provider;Lcom/providerkt/Provider;)Lcom/providerkt/ProviderOverride;
+	public static final fun overrideWithValue (Lcom/providerkt/Provider;Ljava/lang/Object;)Lcom/providerkt/ProviderOverride;
+	public static final fun provider (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function1;)Lkotlin/properties/ReadOnlyProperty;
+	public static synthetic fun provider$default (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lkotlin/properties/ReadOnlyProperty;
+	public static final fun providerContainerOf (Lcom/providerkt/ProviderContainer;Ljava/util/Set;Ljava/util/Set;)Lcom/providerkt/ProviderContainer;
+	public static synthetic fun providerContainerOf$default (Lcom/providerkt/ProviderContainer;Ljava/util/Set;Ljava/util/Set;ILjava/lang/Object;)Lcom/providerkt/ProviderContainer;
+	public static final fun providerOf (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function1;)Lcom/providerkt/Provider;
+	public static synthetic fun providerOf$default (Ljava/lang/String;Lcom/providerkt/ProviderType;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lcom/providerkt/Provider;
+}
+
+public abstract interface class com/providerkt/ProviderListener {
+	public abstract fun listen (Lcom/providerkt/Provider;Lkotlin/jvm/functions/Function1;)Lkotlin/jvm/functions/Function0;
+}
+
+public abstract interface class com/providerkt/ProviderObserver {
+	public abstract fun onCreated (Lcom/providerkt/Provider;Ljava/lang/Object;)V
+	public abstract fun onDisposed (Lcom/providerkt/Provider;Ljava/lang/Object;)V
+	public abstract fun onUpdated (Lcom/providerkt/Provider;Ljava/lang/Object;Ljava/lang/Object;)V
+}
+
+public final class com/providerkt/ProviderObserver$DefaultImpls {
+	public static fun onCreated (Lcom/providerkt/ProviderObserver;Lcom/providerkt/Provider;Ljava/lang/Object;)V
+	public static fun onDisposed (Lcom/providerkt/ProviderObserver;Lcom/providerkt/Provider;Ljava/lang/Object;)V
+	public static fun onUpdated (Lcom/providerkt/ProviderObserver;Lcom/providerkt/Provider;Ljava/lang/Object;Ljava/lang/Object;)V
+}
+
+public final class com/providerkt/ProviderOverride {
+	public fun <init> (Lcom/providerkt/Provider;Lcom/providerkt/Provider;)V
+	public final fun getOriginal ()Lcom/providerkt/Provider;
+	public final fun getOverride ()Lcom/providerkt/Provider;
+}
+
+public abstract interface class com/providerkt/ProviderReader {
+	public abstract fun read (Lcom/providerkt/Provider;)Ljava/lang/Object;
+}
+
+public abstract interface class com/providerkt/ProviderRef : com/providerkt/ProviderDispose, com/providerkt/ProviderListener, com/providerkt/ProviderReader, com/providerkt/ProviderWatcher {
+	public abstract fun get ()Ljava/lang/Object;
+	public abstract fun set (Ljava/lang/Object;)V
+}
+
+public final class com/providerkt/ProviderType : java/lang/Enum {
+	public static final field AlwaysAlive Lcom/providerkt/ProviderType;
+	public static final field Disposable Lcom/providerkt/ProviderType;
+	public static fun valueOf (Ljava/lang/String;)Lcom/providerkt/ProviderType;
+	public static fun values ()[Lcom/providerkt/ProviderType;
+}
+
+public abstract interface class com/providerkt/ProviderUpdater {
+	public abstract fun update (Lcom/providerkt/Provider;Ljava/lang/Object;)V
+}
+
+public abstract interface class com/providerkt/ProviderWatcher {
+	public abstract fun watch (Lcom/providerkt/Provider;)Ljava/lang/Object;
+}
+

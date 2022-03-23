@@ -1,5 +1,6 @@
 package com.providerkt.android
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.providerkt.*
@@ -9,7 +10,7 @@ private val LocalProviderContainer = compositionLocalOf<ProviderContainer?> {
 }
 
 @Composable
-fun ProviderScope(
+public fun ProviderScope(
     overrides: Set<ProviderOverride<*>> = emptySet(),
     observers: Set<ProviderObserver> = setOf(),
     content: @Composable () -> Unit
@@ -28,7 +29,7 @@ fun ProviderScope(
 }
 
 @Composable
-fun UncontrolledProviderScope(
+public fun UncontrolledProviderScope(
     container: ProviderContainer,
     content: @Composable () -> Unit
 ) {
@@ -39,15 +40,18 @@ fun UncontrolledProviderScope(
 }
 
 @Composable
-fun <T> Provider<T>.read(): T {
+public fun <T> Provider<T>.read(): T {
     val container = LocalProviderContainer.current ?: error("ProviderContainer not found")
     return container.read(this)
 }
 
 @Composable
-fun <T> Provider<T>.watch(): MutableState<T> {
+public fun <T> Provider<T>.watch(): MutableState<T> {
     val container = LocalProviderContainer.current ?: error("ProviderContainer not found")
-    val state = remember(container) { mutableStateOf(container.read(this)) }
+    val state = remember(key, container) {
+        mutableStateOf(container.read(this))
+    }
+
     val mutableState = remember(state) {
         object : MutableState<T> by state {
             override var value: T
@@ -65,8 +69,9 @@ fun <T> Provider<T>.watch(): MutableState<T> {
     return mutableState
 }
 
+@SuppressLint("ComposableNaming")
 @Composable
-fun <T> Provider<T>.listen(block: (T) -> Unit) {
+public fun <T> Provider<T>.listen(block: (T) -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val container = LocalProviderContainer.current ?: error("ProviderContainer not found")
     DisposableEffect(key, container, lifecycleOwner) {

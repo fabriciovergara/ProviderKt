@@ -3,7 +3,7 @@ package com.providerkt
 import org.junit.Assert.*
 import org.junit.Test
 
-class ProviderTest {
+internal class ProviderTest {
 
     @Test
     fun `read WHEN simple provider THEN return value`() {
