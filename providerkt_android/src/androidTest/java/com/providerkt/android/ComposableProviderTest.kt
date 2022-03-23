@@ -66,7 +66,7 @@ internal class ComposableProviderTest {
         var disposedCount = 0
         var disposedValue: String? = null
         val valueProvider by familyProvider<String, String>(type = ProviderType.Disposable) { arg ->
-            onDisposed {
+            self.onDisposed {
                 disposedCount++
                 disposedValue = arg
             }
@@ -114,7 +114,7 @@ internal class ComposableProviderTest {
     fun watch_WHEN_value_changed_THEN_update_displayed_value() {
         lateinit var updateValue: (String) -> Unit
         val valueProvider by provider<String> {
-            updateValue = { set(it) }
+            updateValue = { self.set(it) }
             "valueTest"
         }
 
@@ -290,7 +290,7 @@ internal class ComposableProviderTest {
 
         lateinit var updateValue2: (String) -> Unit
         val value2Provider by provider<String> {
-            updateValue2 = { set(it) }
+            updateValue2 = { self.set(it) }
             "value2Test"
         }
 

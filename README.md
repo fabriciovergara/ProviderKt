@@ -89,16 +89,16 @@ val userIdProvider by provider<String> {
     
     // If this provider is being recreated, then by calling get() you will receive the previous value
     // If it's the first time this provider is being created, then get() will return null
-    val previousValue: String? = get()
+    val previousValue: String? = self.get()
     
     val listener = { userId -> 
        // Provider was already created, so get will return the current value
-       val currentValue: String? = get()
+       val currentValue: String? = self.get()
         // If a new value is received in this listener, this provider state will be updated without recreating it
-       set(userId)
+       self.set(userId)
     }
     
-    onDisposed { 
+    self.onDisposed {
         userIdProvider.unregisterListener(listener)
     }
     
@@ -127,7 +127,7 @@ val userIdProvider by provider<String?>(type = ProviderType.Disposable) {
     // By defining provider of type Disposable when no one is listening this provider, 
     // then onDispose will be called, it's state will not be cached for later queries
     // and next it being listened it will recreate from scratch
-    onDisposed { 
+    self.onDisposed {
         repository.clear()
     }
     
@@ -169,11 +169,11 @@ val appColorsProvider by provider<Colors> {
 
 @Composable
 fun AppMain() {
-  val overrideColors by remeber { darkColors(primary = Purple200) }
+  val overrideColors by remember { darkColors(primary = Purple200) }
   ProviderScope(
     overrides = setOf(isDarkModeProvider.overrideWithValue(overrideColors)
   ) {
-    // watch() on all childs from here will returns overridden value from overrideColors
+    // watch() on all children from here will returns overridden value from overrideColors
     val colors by appColorsProvider.watch()
     MaterialTheme(
       colors = colors

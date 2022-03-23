@@ -6,6 +6,52 @@ import org.junit.Test
 internal class ProviderTest {
 
     @Test
+    fun `name WHEN name not provided THEN use property name`() {
+        val provider by provider<String> {
+            "A"
+        }
+
+        assertEquals("provider", provider.name)
+    }
+
+    @Test
+    fun `name WHEN name provided THEN use given name`() {
+        val provider by provider<String>("Name") {
+            "A"
+        }
+
+        assertEquals("Name", provider.name)
+    }
+
+    @Test
+    fun `name WHEN family and name provided THEN use given name`() {
+        val provider by familyProvider<String, String>(FamilyName("Name")) {
+            "A"
+        }
+
+        assertEquals("Name", provider("B").name)
+    }
+
+    @Test
+    fun `name WHEN family and factory name provided THEN use created name`() {
+        val provider by familyProvider<String, String>(FamilyName { "Name_$it" }) {
+            "A"
+        }
+
+        assertEquals("Name_B", provider("B").name)
+    }
+
+    @Test
+    fun `name WHEN called from provider lambda THEN return self name`() {
+        val container = providerContainerOf()
+        val provider by provider<String> {
+            "A ${self.name}"
+        }
+
+        assertEquals("A provider", container.read(provider))
+    }
+
+    @Test
     fun `read WHEN simple provider THEN return value`() {
         val container = providerContainerOf()
         val provider by provider<String> {
@@ -87,7 +133,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         lateinit var update: (String) -> Unit
         val provider by provider<String> {
-            update = { set(it) }
+            update = { self.set(it) }
             "A"
         }
 
@@ -145,7 +191,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         lateinit var update: (String) -> Unit
         val provider1 by provider<String> {
-            update = { set("B") }
+            update = { self.set("B") }
             "A"
         }
 
@@ -201,7 +247,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         lateinit var update: (String) -> Unit
         val provider1 by provider<String> {
-            update = { set(it) }
+            update = { self.set(it) }
             "A"
         }
 
@@ -222,7 +268,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         lateinit var update: (String) -> Unit
         val provider1 by provider<String> {
-            update = { set(it) }
+            update = { self.set(it) }
             "A"
         }
 
@@ -275,7 +321,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         var onDisposeCallCount = 0
         val provider1 by provider<String>(type = ProviderType.Disposable) {
-            onDisposed {
+            self.onDisposed {
                 onDisposeCallCount++
             }
             "A"
@@ -293,7 +339,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         lateinit var onChange: (String) -> Unit
         val provider1 by provider<String> {
-            onChange = { set(it) }
+            onChange = { self.set(it) }
             "A"
         }
 
@@ -301,7 +347,7 @@ internal class ProviderTest {
         var onDisposeCallValue: String? = null
         val provider2 by provider<String> {
             val value1 = watch(provider1)
-            onDisposed {
+            self.onDisposed {
                 onDisposeCallValue = value1
                 onDisposeCallCount++
             }
@@ -322,7 +368,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         lateinit var update: (String) -> Unit
         val provider1 by provider<String> {
-            update = { set(it) }
+            update = { self.set(it) }
             "A"
         }
 
@@ -451,7 +497,7 @@ internal class ProviderTest {
         val container = providerContainerOf()
         var value: String? = "SomethingElse"
         val provider by provider<String> {
-            value = get()
+            value = self.get()
             "A"
         }
 
@@ -468,7 +514,7 @@ internal class ProviderTest {
         }
 
         val provider2 by provider<String> {
-            value = get()
+            value = self.get()
             val value1 = watch(provider1)
             value1
         }

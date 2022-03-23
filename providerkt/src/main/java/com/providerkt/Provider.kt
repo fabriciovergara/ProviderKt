@@ -1,5 +1,6 @@
 package com.providerkt
 
+import com.providerkt.internal.cached
 import kotlin.properties.ReadOnlyProperty
 
 public interface ProviderReader {
@@ -35,13 +36,19 @@ public class FamilyName<Argument>(public val block: (Argument) -> String) {
     public constructor(name: String) : this({ name })
 }
 
-public interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener {
+public interface ProviderSelf<State> {
+    public val name: String
     public fun onDisposed(block: Dispose)
     public fun set(value: State)
     public fun get(): State?
 }
 
-public sealed class ProviderContainer : ProviderListener, ProviderReader, ProviderUpdater
+public interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener {
+    public val self: ProviderSelf<State>
+}
+
+public abstract class ProviderContainer internal constructor() : ProviderListener, ProviderReader,
+    ProviderUpdater
 
 public enum class ProviderType {
     AlwaysAlive,
@@ -71,6 +78,7 @@ public fun providerContainerOf(
     parent = when (parent) {
         is ProviderContainerInternal -> parent
         null -> parent
+        else -> error("Should never happen")
     },
     overrides = overrides,
     observers = observers
@@ -109,7 +117,7 @@ public fun <State> provider(
     name: String? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: Create<State>
-): ReadOnlyProperty<Any?, Provider<State>> = ReadOnlyProperty { _, property ->
+): ReadOnlyProperty<Any?, Provider<State>> = cached { property ->
     providerOf(name = name ?: property.name, type = type, create = create)
 }
 
@@ -133,10 +141,9 @@ public fun <State, Argument> familyProvider(
     name: FamilyName<Argument>? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
     create: CreateFamily<State, Argument>
-): ReadOnlyProperty<Any?, FamilyProvider<State, Argument>> = ReadOnlyProperty { _, property ->
+): ReadOnlyProperty<Any?, FamilyProvider<State, Argument>> = cached { property ->
     familyProviderOf(name = name ?: FamilyName(property.name), type = type, create = create)
 }
-
 
 private fun providerKeyOf(
     base: ProviderKey = "${Any().hashCode()}",

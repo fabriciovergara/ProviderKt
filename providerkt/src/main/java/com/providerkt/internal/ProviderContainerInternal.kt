@@ -52,8 +52,8 @@ internal data class ProviderEntry<State>(
 
 internal class ProviderRefInternal<State>(
     val container: ProviderContainerInternal,
-    val self: Provider<State>,
-) : ProviderRef<State> {
+    val pSelf: Provider<State>,
+) : ProviderRef<State>, ProviderSelf<State> {
 
     var onDisposed: Dispose = {}
         set(value) = synchronized(this) {
@@ -68,7 +68,7 @@ internal class ProviderRefInternal<State>(
     }
 
     override fun <WatchState> watch(provider: Provider<WatchState>): WatchState {
-        container.watch(self, provider)
+        container.watch(pSelf, provider)
         return container.read(provider)
     }
 
@@ -81,12 +81,16 @@ internal class ProviderRefInternal<State>(
     }
 
     override fun set(value: State) {
-        container.selfUpdate(self, value)
+        container.selfUpdate(pSelf, value)
     }
 
     override fun get(): State? {
-        return container.selfRead(self)
+        return container.selfRead(pSelf)
     }
+
+    override val name: String = pSelf.name
+
+    override val self: ProviderSelf<State> = this
 }
 
 private val ProviderContainerInternal.lock: Any
@@ -176,7 +180,7 @@ internal fun <State> ProviderContainerInternal.doDisposeListen(
     val listeners = provider.removeListener(listener)
     synchronized(lock) {
         val entry = state.getTypedOrNull(provider) ?: return@synchronized null
-        if (entry.ref.self.type == ProviderType.Disposable && listeners.isEmpty()) {
+        if (entry.ref.pSelf.type == ProviderType.Disposable && listeners.isEmpty()) {
             state = state - provider.key
             {
                 observers.forEach { it.onDisposed(provider, entry.state) }
@@ -301,7 +305,7 @@ private fun <State> ProviderContainerInternal.doResetInternal(
 private fun <State> ProviderContainerInternal.toRef(
     provider: Provider<State>
 ): ProviderRefInternal<State> {
-    return ProviderRefInternal(container = this, self = provider)
+    return ProviderRefInternal(container = this, pSelf = provider)
 }
 
 private fun <State> Provider<State>.addListener(listener: () -> Unit): Set<() -> Unit> {
