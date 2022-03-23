@@ -87,11 +87,13 @@ val userIdProvider by provider<String> {
     // and listener will be unregistered. After that this provider will be recreated
     val repository = watch(userRepositoryProvider)
     
-    // If this provider is recreated, then by calling get() you will receive the previous value
+    // If this provider is being recreated, then by calling get() you will receive the previous value
     // If it's the first time this provider is being created, then get() will return null
     val previousValue: String? = get()
     
     val listener = { userId -> 
+       // Provider was already created, so get will return the current value
+       val currentValue: String? = get()
         // If a new value is received in this listener, this provider state will be updated without recreating it
        set(userId)
     }
