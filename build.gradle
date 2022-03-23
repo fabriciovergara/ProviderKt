@@ -38,6 +38,7 @@ allprojects {
     }
 
     afterEvaluate { project ->
+
         if (!project.hasProperty('android')) {
             return
         }
@@ -63,10 +64,11 @@ allprojects {
 
             kotlinOptions {
                 jvmTarget = JavaVersion.VERSION_1_8.toString()
-                freeCompilerArgs += [
-                        "-Xopt-in=kotlin.RequiresOptIn",
-                        "-Xexplicit-api=strict"
-                ]
+                freeCompilerArgs += ["-Xopt-in=kotlin.RequiresOptIn"]
+
+                if (project.getPlugins().hasPlugin('com.android.library')) {
+                    freeCompilerArgs += ["-Xexplicit-api=strict"]
+                }
             }
 
             packagingOptions {
