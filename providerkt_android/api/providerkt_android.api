@@ -1,0 +1,15 @@
+public final class com/providerkt/android/BuildConfig {
+	public static final field BUILD_TYPE Ljava/lang/String;
+	public static final field DEBUG Z
+	public static final field LIBRARY_PACKAGE_NAME Ljava/lang/String;
+	public fun <init> ()V
+}
+
+public final class com/providerkt/android/ComposableProviderKt {
+	public static final fun ProviderScope (Ljava/util/Set;Ljava/util/Set;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;II)V
+	public static final fun UncontrolledProviderScope (Lcom/providerkt/ProviderContainer;Lkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;I)V
+	public static final fun listen (Lcom/providerkt/Provider;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;I)V
+	public static final fun read (Lcom/providerkt/Provider;Landroidx/compose/runtime/Composer;I)Ljava/lang/Object;
+	public static final fun watch (Lcom/providerkt/Provider;Landroidx/compose/runtime/Composer;I)Landroidx/compose/runtime/MutableState;
+}
+
