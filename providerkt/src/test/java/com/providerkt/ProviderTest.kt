@@ -119,7 +119,8 @@ internal class ProviderTest {
 
         val container = providerContainerOf()
 
-        val container2 = container.extends(
+        val container2 = providerContainerOf(
+            parent = container,
             overrides = setOf(
                 provider.overrideWithProvider(providerOverride)
             )
@@ -135,7 +136,7 @@ internal class ProviderTest {
         }
 
         val provider2 by provider<String> {
-           watch(provider)
+            watch(provider)
         }
 
         val providerOverride by provider<String> {
@@ -152,13 +153,16 @@ internal class ProviderTest {
             )
         )
 
-        val container2 = container1.extends(
-             overrides = setOf(
+        val container2 = providerContainerOf(
+            parent = container1,
+            overrides = setOf(
                 provider.overrideWithProvider(providerOverride2)
             )
         )
 
-        val container3 = container2.extends()
+        val container3 = providerContainerOf(
+            parent = container2
+        )
 
         assertEquals("C", container3.read(provider2))
     }
@@ -221,7 +225,10 @@ internal class ProviderTest {
             provider1Value
         }
 
-        val container2 = container1.extends()
+        val container2 = providerContainerOf(
+            parent = container1
+        )
+
         val provider2 by provider<String> {
             "B + ${read(provider1)}"
         }

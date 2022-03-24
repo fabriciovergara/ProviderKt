@@ -7,13 +7,7 @@ internal class ContainerRef<State>(
     private val origin: Provider<State>,
 ) : ProviderRef<State>, ProviderSelf<State> {
 
-    var onDisposed: Dispose = {}
-        set(value) = synchronized(this) {
-            field = value
-        }
-        get() = synchronized(this) {
-            field
-        }
+    var onDisposed: Dispose by sync(this) {}
 
     override val name: String = origin.name
 

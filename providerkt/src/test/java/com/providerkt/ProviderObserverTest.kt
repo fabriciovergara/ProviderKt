@@ -125,7 +125,8 @@ internal class ProviderObserverTest {
             observers = setOf(parentObserver)
         )
 
-        val container = parent.extends(
+        val container = providerContainerOf(
+            parent = parent,
             observers = setOf(observer),
         )
 

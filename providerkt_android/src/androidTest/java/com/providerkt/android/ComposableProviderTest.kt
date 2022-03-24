@@ -2,6 +2,7 @@ package com.providerkt.android
 
 import androidx.compose.material.Button
 import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -283,75 +284,6 @@ internal class ComposableProviderTest {
     }
 
     @Test
-    fun watch_WHEN_override_changes_THEN_reset_child_providers() {
-        val valueProvider by provider<String> {
-            "valueTest"
-        }
-
-        lateinit var updateValue2: (String) -> Unit
-        val value2Provider by provider<String> {
-            updateValue2 = { self.set(it) }
-            "value2Test"
-        }
-
-        composeTestRule.setContent {
-            val overrideValue = remember { mutableStateOf("valueTest1") }
-            ProviderScope(
-                overrides = setOf(
-                    valueProvider.overrideWithValue(overrideValue.value)
-                )
-            ) {
-                val value1 by valueProvider.watch()
-                val value2 by value2Provider.watch()
-                Text(
-                    text = value1,
-                    modifier = Modifier.testTag("text1")
-                )
-
-                Text(
-                    text = value2,
-                    modifier = Modifier.testTag("text2")
-                )
-
-                Button(
-                    onClick = {
-                        overrideValue.value = "valueTest3"
-                    },
-                    modifier = Modifier.testTag("button")
-                ) {
-                    Text(text = "Click")
-                }
-            }
-        }
-
-        composeTestRule.onNodeWithTag("text1")
-            .assert(hasText("valueTest1"))
-            .assertIsDisplayed()
-
-        composeTestRule.onNodeWithTag("text2")
-            .assert(hasText("value2Test"))
-            .assertIsDisplayed()
-
-        updateValue2("value2Test2")
-
-        composeTestRule.onNodeWithTag("text2")
-            .assert(hasText("value2Test2"))
-            .assertIsDisplayed()
-
-        composeTestRule.onNodeWithTag("button")
-            .performClick()
-
-        composeTestRule.onNodeWithTag("text1")
-            .assert(hasText("valueTest3"))
-            .assertIsDisplayed()
-
-        composeTestRule.onNodeWithTag("text2")
-            .assert(hasText("value2Test"))
-            .assertIsDisplayed()
-    }
-
-
-    @Test
     fun listen_WHEN_just_listen_THEN_receive_value() {
         val valueProvider by provider<String> {
             "valueTest"
@@ -373,6 +305,4 @@ internal class ComposableProviderTest {
         composeTestRule.onNodeWithText("valueTest")
             .assertIsDisplayed()
     }
-
-
 }

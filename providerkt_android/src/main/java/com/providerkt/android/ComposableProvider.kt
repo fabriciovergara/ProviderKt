@@ -4,10 +4,14 @@ import android.annotation.SuppressLint
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.providerkt.*
+import java.lang.IllegalStateException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 private val LocalProviderContainer = compositionLocalOf<ProviderContainer?> {
     null
 }
+
 
 @Composable
 public fun ProviderScope(
@@ -16,13 +20,25 @@ public fun ProviderScope(
     content: @Composable () -> Unit,
 ) {
     val parent = LocalProviderContainer.current
-    val container = parent?.extends(
-        overrides = overrides,
-        observers = observers
-    ) ?: providerContainerOf(
-        overrides = overrides,
-        observers = observers
-    )
+    val container = remember(parent) {
+        providerContainerOf(parent, overrides, observers)
+    }
+
+    val isFirstComposition = remember {
+        AtomicBoolean(true)
+    }
+
+    if (isFirstComposition.getAndSet(false).not()) {
+        remember(overrides) {
+            container.setOverrides(overrides)
+            overrides
+        }
+
+        remember(observers) {
+            container.setObservers(observers)
+            observers
+        }
+    }
 
     UncontrolledProviderScope(
         container,

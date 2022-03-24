@@ -10,7 +10,7 @@ internal fun <State> Container.doReadSelf(
         error("Should never happen")
     }
 
-    val state = synchronized(lock) {
+    val state = synchronized(root) {
         val entry = state.getOrNull(provider)
         entry?.state
     }

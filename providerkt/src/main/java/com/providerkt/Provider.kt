@@ -2,6 +2,7 @@ package com.providerkt
 
 import com.providerkt.internal.cached
 import com.providerkt.internal.Container
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.properties.ReadOnlyProperty
 
 public interface ProviderReader {
@@ -52,11 +53,8 @@ public abstract class ProviderContainer internal constructor() :
     ProviderListener,
     ProviderReader,
     ProviderUpdater {
-
-    public abstract fun extends(
-        overrides: Set<ProviderOverride<*>> = setOf(),
-        observers: Set<ProviderObserver> = setOf(),
-    ): ProviderContainer
+    public abstract fun setOverrides(overrides: Set<ProviderOverride<*>>)
+    public abstract fun setObservers(observers: Set<ProviderObserver>)
 }
 
 public enum class ProviderType {
@@ -74,31 +72,42 @@ public class Provider<State>(
     override fun toString(): String = "Provider($key, $name, $type)"
 }
 
-public class ProviderOverride<State>(
-    public val original: Provider<State>,
-    public val override: Provider<State>,
-)
+public sealed class ProviderOverride<State> {
+    internal abstract val original: Provider<State>
+}
+
+internal data class ProviderOverrideWithProvider<State>(
+    override val original: Provider<State>,
+    val override: Provider<State>,
+) : ProviderOverride<State>()
+
+internal data class ProviderOverrideWithValue<State>(
+    override val original: Provider<State>,
+    val override: State,
+) : ProviderOverride<State>()
 
 public fun providerContainerOf(
+    parent: ProviderContainer? = null,
     overrides: Set<ProviderOverride<*>> = setOf(),
     observers: Set<ProviderObserver> = setOf(),
 ): ProviderContainer = Container(
+    parent = parent as Container?,
     overrides = overrides,
     observers = observers
 )
 
 public fun <State> Provider<State>.overrideWithProvider(
     override: Provider<State>,
-): ProviderOverride<State> = ProviderOverride(
+): ProviderOverride<State> = ProviderOverrideWithProvider(
     original = this,
     override = override
 )
 
 public fun <State> Provider<State>.overrideWithValue(
     override: State,
-): ProviderOverride<State> = ProviderOverride(
+): ProviderOverride<State> = ProviderOverrideWithValue(
     original = this,
-    override = providerOf(name = name) { override }
+    override = override
 )
 
 
