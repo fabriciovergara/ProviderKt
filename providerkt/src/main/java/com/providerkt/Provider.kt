@@ -1,7 +1,7 @@
 package com.providerkt
 
-import com.providerkt.internal.ProviderContainerInternal
 import com.providerkt.internal.cached
+import com.providerkt.internal.Container
 import kotlin.properties.ReadOnlyProperty
 
 public interface ProviderReader {
@@ -48,8 +48,16 @@ public interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderL
     public val self: ProviderSelf<State>
 }
 
-public abstract class ProviderContainer internal constructor() : ProviderListener, ProviderReader,
-    ProviderUpdater
+public abstract class ProviderContainer internal constructor() :
+    ProviderListener,
+    ProviderReader,
+    ProviderUpdater {
+
+    public abstract fun extends(
+        overrides: Set<ProviderOverride<*>> = setOf(),
+        observers: Set<ProviderObserver> = setOf(),
+    ): ProviderContainer
+}
 
 public enum class ProviderType {
     AlwaysAlive,
@@ -60,7 +68,7 @@ public class Provider<State>(
     public val key: ProviderKey,
     public val name: String,
     public val type: ProviderType,
-    internal val create: Create<State>
+    internal val create: Create<State>,
 ) {
     internal var listeners: Set<() -> Unit> = setOf()
     override fun toString(): String = "Provider($key, $name, $type)"
@@ -68,32 +76,26 @@ public class Provider<State>(
 
 public class ProviderOverride<State>(
     public val original: Provider<State>,
-    public val override: Provider<State>
+    public val override: Provider<State>,
 )
 
 public fun providerContainerOf(
-    parent: ProviderContainer? = null,
     overrides: Set<ProviderOverride<*>> = setOf(),
-    observers: Set<ProviderObserver> = setOf()
-): ProviderContainer = ProviderContainerInternal(
-    parent = when (parent) {
-        is ProviderContainerInternal -> parent
-        null -> parent
-        else -> error("Should never happen")
-    },
+    observers: Set<ProviderObserver> = setOf(),
+): ProviderContainer = Container(
     overrides = overrides,
     observers = observers
 )
 
 public fun <State> Provider<State>.overrideWithProvider(
-    override: Provider<State>
+    override: Provider<State>,
 ): ProviderOverride<State> = ProviderOverride(
     original = this,
     override = override
 )
 
 public fun <State> Provider<State>.overrideWithValue(
-    override: State
+    override: State,
 ): ProviderOverride<State> = ProviderOverride(
     original = this,
     override = providerOf(name = name) { override }
@@ -117,7 +119,7 @@ public fun <State> providerOf(
 public fun <State> provider(
     name: String? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
-    create: Create<State>
+    create: Create<State>,
 ): ReadOnlyProperty<Any?, Provider<State>> = cached { property ->
     providerOf(name = name ?: property.name, type = type, create = create)
 }
@@ -125,7 +127,7 @@ public fun <State> provider(
 public fun <State, Argument> familyProviderOf(
     name: FamilyName<Argument>,
     type: ProviderType = ProviderType.AlwaysAlive,
-    create: CreateFamily<State, Argument>
+    create: CreateFamily<State, Argument>,
 ): FamilyProvider<State, Argument> {
     val key = providerKeyOf()
     return { arg ->
@@ -141,14 +143,14 @@ public fun <State, Argument> familyProviderOf(
 public fun <State, Argument> familyProvider(
     name: FamilyName<Argument>? = null,
     type: ProviderType = ProviderType.AlwaysAlive,
-    create: CreateFamily<State, Argument>
+    create: CreateFamily<State, Argument>,
 ): ReadOnlyProperty<Any?, FamilyProvider<State, Argument>> = cached { property ->
     familyProviderOf(name = name ?: FamilyName(property.name), type = type, create = create)
 }
 
 private fun providerKeyOf(
     base: ProviderKey = "${Any().hashCode()}",
-    extra: Any? = null
+    extra: Any? = null,
 ): ProviderKey {
     return extra?.let { "$base+${it.hashCode()}" } ?: base
 }

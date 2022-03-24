@@ -13,12 +13,14 @@ private val LocalProviderContainer = compositionLocalOf<ProviderContainer?> {
 public fun ProviderScope(
     overrides: Set<ProviderOverride<*>> = emptySet(),
     observers: Set<ProviderObserver> = setOf(),
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val parent = LocalProviderContainer.current
-    val container = providerContainerOf(
+    val container = parent?.extends(
         overrides = overrides,
-        parent = parent,
+        observers = observers
+    ) ?: providerContainerOf(
+        overrides = overrides,
         observers = observers
     )
 
@@ -31,7 +33,7 @@ public fun ProviderScope(
 @Composable
 public fun UncontrolledProviderScope(
     container: ProviderContainer,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(
         LocalProviderContainer provides container,

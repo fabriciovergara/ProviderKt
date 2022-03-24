@@ -3,9 +3,9 @@ package com.providerkt.internal
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-private class CachedReadOnlyProperty<T>(
-    private val block: (KProperty<*>) -> T
-) : ReadOnlyProperty<Any?, T> {
+private val UNINITIALIZED_VALUE = Any()
+
+internal fun <T> cached(block: (KProperty<*>) -> T) = object : ReadOnlyProperty<Any?, T> {
 
     private var value: Any? = UNINITIALIZED_VALUE
 
@@ -17,13 +17,4 @@ private class CachedReadOnlyProperty<T>(
         @Suppress("UNCHECKED_CAST")
         return value as T
     }
-
-
-    companion object {
-        private val UNINITIALIZED_VALUE = Any()
-    }
-}
-
-internal fun <T> cached(block: (KProperty<*>) -> T): ReadOnlyProperty<Any?, T> {
-    return CachedReadOnlyProperty(block)
 }
