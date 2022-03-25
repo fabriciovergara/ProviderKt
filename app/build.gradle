@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 
 android {
     defaultConfig {
-        applicationId "com.providerkt.android.app"
+        applicationId "dev.fabriciovergara.providerkt.android.app"
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
