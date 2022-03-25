@@ -3,6 +3,9 @@ package com.providerkt.android
 import android.annotation.SuppressLint
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.providerkt.*
 import java.lang.IllegalStateException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -12,6 +15,13 @@ private val LocalProviderContainer = compositionLocalOf<ProviderContainer?> {
     null
 }
 
+private val savedStateHandleProvider by provider<SavedStateHandle> {
+    error("Must override")
+}
+
+internal class SavedStateHandlerViewModel(
+    val savedStateHandle: SavedStateHandle,
+) : ViewModel()
 
 @Composable
 public fun ProviderScope(
@@ -20,8 +30,14 @@ public fun ProviderScope(
     content: @Composable () -> Unit,
 ) {
     val parent = LocalProviderContainer.current
+
+    val viewModel = viewModel<SavedStateHandlerViewModel>()
+    val viewModelOverride = remember(viewModel) {
+        savedStateHandleProvider.overrideWithValue(viewModel.savedStateHandle)
+    }
+
     val container = remember(parent) {
-        providerContainerOf(parent, overrides, observers)
+        providerContainerOf(parent, overrides + viewModelOverride, observers)
     }
 
     val isFirstComposition = remember {
@@ -30,7 +46,7 @@ public fun ProviderScope(
 
     if (isFirstComposition.getAndSet(false).not()) {
         remember(overrides) {
-            container.setOverrides(overrides)
+            container.setOverrides(overrides + viewModelOverride)
             overrides
         }
 
@@ -97,3 +113,6 @@ public fun <T> Provider<T>.listen(block: (T) -> Unit) {
         onDispose { dispose() }
     }
 }
+
+public val <T> ProviderRef<T>.savedStateHandler: SavedStateHandle
+    get() = read(savedStateHandleProvider)
