@@ -14,6 +14,7 @@ internal fun <State> Container.doUpdateSelf(
             state = state + (provider.key to newEntry)
             {
                 extras.observers.onUpdated(provider, entry.state, newEntry.state)
+                newEntry.onUpdated(newEntry.state)
                 provider.notifyListeners()
             }
         } else {

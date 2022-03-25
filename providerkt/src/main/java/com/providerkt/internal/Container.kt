@@ -39,7 +39,7 @@ internal class Container private constructor(
             )
             old.overrides.values
         }.forEach { provider ->
-            reset(provider)
+            refresh(provider)
         }
     }
 
@@ -49,7 +49,7 @@ internal class Container private constructor(
         }
     }
 
-    override fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose {
+    override fun <State> listen(provider: Provider<State>, block: TypedCallback<State>): VoidCallback {
         return doListen(provider = provider, block = block, origin = this, extras = collectExtras())
     }
 
@@ -59,6 +59,11 @@ internal class Container private constructor(
 
     override fun <State> update(provider: Provider<State>, value: State) {
         return doUpdate(provider = provider, next = value, origin = this, extras = collectExtras())
+    }
+
+    override fun <State> refresh(provider: Provider<State>): State {
+        doRefresh(provider = provider, origin = this, extras = collectExtras())
+        return doRead(provider = provider, origin = this, extras = collectExtras())
     }
 
     fun <State, WState> watch(origin: Provider<State>, provider: Provider<WState>): WState {
@@ -72,10 +77,6 @@ internal class Container private constructor(
 
     fun <State> readSelf(provider: Provider<State>): State? {
         return doReadSelf(provider = provider, origin = this)
-    }
-
-    fun <State> reset(provider: Provider<State>) {
-        doReset(provider = provider, origin = this, extras = collectExtras())
     }
 
     fun <State> dispose(provider: Provider<State>, listener: () -> Unit) {

@@ -1,16 +1,15 @@
 package com.providerkt.internal
 
-import com.providerkt.Dispose
-import com.providerkt.Listener
+import com.providerkt.VoidCallback
+import com.providerkt.TypedCallback
 import com.providerkt.Provider
-import com.providerkt.ProviderType
 
 internal fun <State> Container.doListen(
     provider: Provider<State>,
-    block: Listener<State>,
+    block: TypedCallback<State>,
     origin: Container,
     extras: ContainerExtras,
-): Dispose {
+): VoidCallback {
     val providerOverride = extras.overrides.getOrNull(provider)
     if (providerOverride != null) {
         return listenInternal(providerOverride, block)
@@ -25,8 +24,8 @@ internal fun <State> Container.doListen(
 
 private fun <State> Container.listenInternal(
     provider: Provider<State>,
-    block: Listener<State>,
-): Dispose {
+    block: TypedCallback<State>,
+): VoidCallback {
     val listener = { block(read(provider)) }
     provider.addListener(listener)
     listener.invoke()

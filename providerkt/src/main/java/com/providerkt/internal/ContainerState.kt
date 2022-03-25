@@ -1,17 +1,20 @@
 package com.providerkt.internal
 
-import com.providerkt.Dispose
-import com.providerkt.Provider
-import com.providerkt.ProviderKey
-import com.providerkt.ProviderType
+import com.providerkt.*
 
 internal typealias ContainerState = Map<ProviderKey, ContainerEntry<*>>
 
 internal data class ContainerEntry<State>(
     val state: State,
-    val type: ProviderType,
-    val dispose: Dispose,
-)
+    val onDisposed: TypedCallback<State>,
+    val onUpdated: TypedCallback<State>,
+) {
+    constructor(ref: ContainerRef<State>) : this(
+        state = ref.create(),
+        onDisposed = ref::dispose,
+        onUpdated = ref::update
+    )
+}
 
 internal fun <State> ContainerState.getOrNull(
     provider: Provider<State>,

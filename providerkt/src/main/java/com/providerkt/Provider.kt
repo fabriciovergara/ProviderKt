@@ -2,7 +2,6 @@ package com.providerkt
 
 import com.providerkt.internal.cached
 import com.providerkt.internal.Container
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.properties.ReadOnlyProperty
 
 public interface ProviderReader {
@@ -14,12 +13,17 @@ public interface ProviderWatcher {
 }
 
 public interface ProviderListener {
-    public fun <State> listen(provider: Provider<State>, block: Listener<State>): Dispose
+    public fun <State> listen(provider: Provider<State>, block: TypedCallback<State>): VoidCallback
 }
 
 public interface ProviderUpdater {
     public fun <State> update(provider: Provider<State>, value: State)
 }
+
+public interface ProviderRefresher {
+    public fun <State> refresh(provider: Provider<State>): State
+}
+
 
 public interface ProviderObserver {
     public fun onCreated(provider: Provider<*>, value: Any?): Unit = Unit
@@ -27,9 +31,9 @@ public interface ProviderObserver {
     public fun onDisposed(provider: Provider<*>, value: Any?): Unit = Unit
 }
 
-public typealias Dispose = () -> Unit
 public typealias ProviderKey = String
-public typealias Listener<State> = (state: State) -> Unit
+public typealias VoidCallback = () -> Unit
+public typealias TypedCallback<State> = (state: State) -> Unit
 public typealias Create<State> = ProviderRef<State>.() -> State
 public typealias CreateFamily<State, Argument> = ProviderRef<State>.(arg: Argument) -> State
 public typealias FamilyProvider<State, Argument> = (arg: Argument) -> Provider<State>
@@ -40,19 +44,25 @@ public class FamilyName<Argument>(public val block: (Argument) -> String) {
 
 public interface ProviderSelf<State> {
     public val name: String
-    public fun onDisposed(block: Dispose)
+    public fun onDisposed(block: VoidCallback)
+    public fun onUpdated(block: TypedCallback<State>)
     public fun set(value: State)
     public fun get(): State?
 }
 
-public interface ProviderRef<State> : ProviderReader, ProviderWatcher, ProviderListener {
+public interface ProviderRef<State> :
+    ProviderReader,
+    ProviderWatcher,
+    ProviderListener,
+    ProviderRefresher {
     public val self: ProviderSelf<State>
 }
 
 public abstract class ProviderContainer internal constructor() :
     ProviderListener,
     ProviderReader,
-    ProviderUpdater {
+    ProviderUpdater,
+    ProviderRefresher {
     public abstract fun setOverrides(overrides: Set<ProviderOverride<*>>)
     public abstract fun setObservers(observers: Set<ProviderObserver>)
 }

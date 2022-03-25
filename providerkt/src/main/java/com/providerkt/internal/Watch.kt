@@ -1,6 +1,6 @@
 package com.providerkt.internal
 
-import com.providerkt.Dispose
+import com.providerkt.VoidCallback
 import com.providerkt.Provider
 
 internal fun <State, WState> Container.doWatch(
@@ -8,11 +8,11 @@ internal fun <State, WState> Container.doWatch(
     provider: Provider<WState>,
     origin: Container
 ) {
-    var dispose: Dispose? = null
+    var dispose: VoidCallback? = null
     dispose = listen(provider) {
         dispose?.run {
             invoke()
-            origin.reset(self)
+            origin.refresh(self)
         }
     }
 }

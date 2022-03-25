@@ -19,18 +19,3 @@ internal fun <T> cached(block: (KProperty<*>) -> T) = object : ReadOnlyProperty<
         return value as T
     }
 }
-
-internal fun <T> sync(lock: Any, initial: T) = object : ReadWriteProperty<Any?, T> {
-
-    private var value: T = initial
-
-    override fun getValue(thisRef: Any?, property: KProperty<*>): T =
-        synchronized(lock) {
-            value
-        }
-
-    override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) =
-        synchronized(lock) {
-            this.value = value
-        }
-}

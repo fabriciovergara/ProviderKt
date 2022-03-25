@@ -28,14 +28,15 @@ private fun <State> Container.listenDisposeInternal(
     provider.removeListener(listener)
     synchronized(root) {
         val entry = state.getOrNull(provider) ?: return@synchronized null
-        if (entry.type == ProviderType.Disposable && provider.isEmpty()) {
+        val shouldDispose = provider.shouldDispose()
+        if (shouldDispose) {
             state = state - provider.key
-            {
+        }
+        {
+            if (shouldDispose) {
                 extras.observers.onDisposed(provider, entry.state)
-                entry.dispose()
+                entry.onDisposed(entry.state)
             }
-        } else {
-            null
         }
     }?.invoke()
 }

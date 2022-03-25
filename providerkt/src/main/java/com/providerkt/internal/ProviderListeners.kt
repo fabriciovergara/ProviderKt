@@ -1,6 +1,7 @@
 package com.providerkt.internal
 
 import com.providerkt.Provider
+import com.providerkt.ProviderType
 
 internal fun <State> Provider<State>.addListener(listener: () -> Unit) {
     synchronized(this) {
@@ -14,9 +15,9 @@ internal fun <State> Provider<State>.removeListener(listener: () -> Unit) {
     }
 }
 
-internal fun <State> Provider<State>.isEmpty(): Boolean {
+internal fun <State> Provider<State>.shouldDispose(): Boolean {
     return synchronized(this) {
-        listeners.isEmpty()
+        listeners.isEmpty() && type == ProviderType.Disposable
     }
 }
 

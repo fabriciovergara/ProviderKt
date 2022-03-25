@@ -32,21 +32,26 @@ private fun <State> Container.updateInternal(
             cachedEntry
         } else {
             val ref = ContainerRef(container = origin, origin = provider)
-            ContainerEntry(state = provider.create(ref), type = provider.type) {
-                ref.onDisposed()
-            }
+            ContainerEntry(ref = ref)
         }
 
+        val shouldDispose = provider.shouldDispose()
         val newEntry = entry.copy(state = next)
         state = state + (provider.key to newEntry)
         {
             if (cachedEntry != null) {
                 extras.observers.onUpdated(provider, entry.state, newEntry.state)
+                newEntry.onUpdated(newEntry.state)
             } else {
                 extras.observers.onCreated(provider, newEntry.state)
             }
 
-            provider.notifyListeners()
+            if (shouldDispose) {
+                extras.observers.onDisposed(provider, newEntry.state)
+                entry.onDisposed(newEntry.state)
+            } else {
+                provider.notifyListeners()
+            }
         }
     }.invoke()
 }

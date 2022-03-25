@@ -1,6 +1,7 @@
 package com.providerkt.internal
 
 import com.providerkt.Provider
+import com.providerkt.ProviderType
 
 internal fun <State> Container.doRead(
     provider: Provider<State>,
@@ -30,16 +31,26 @@ private fun <State> Container.readInternal(
             cachedEntry
         } else {
             val ref = ContainerRef(container = origin, origin = provider)
-            ContainerEntry(state = provider.create(ref), type = provider.type) {
-                ref.onDisposed()
-            }
+            ContainerEntry(ref = ref)
         }
 
-        state = state + (provider.key to entry)
+        val shouldDispose = provider.shouldDispose()
+        state = if (shouldDispose) {
+            state - provider.key
+        } else {
+            state + (provider.key to entry)
+        }
+
         entry.state to {
             if (cachedEntry == null) {
                 extras.observers.onCreated(provider, entry.state)
             }
+
+            if (shouldDispose) {
+                extras.observers.onDisposed(provider, entry.state)
+                entry.onDisposed(entry.state)
+            }
+
         }
     }
 
