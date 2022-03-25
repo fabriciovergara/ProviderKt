@@ -22,16 +22,14 @@ import com.providerkt.android.savedStateHandler
 import com.providerkt.android.watch
 
 val toDoListProvider by provider<List<String>>(type = ProviderType.Disposable) {
-    val value = savedStateHandler[self.name] ?: listOf<String>()
     self.onUpdated { next -> savedStateHandler[self.name] = next }
-    value
+    savedStateHandler[self.name] ?: listOf<String>()
 }
 
 
 @Composable
 fun MainPageContent() {
     ProviderScope {
-
         val list = toDoListProvider.watch()
         LazyColumn {
             items(list.value.size + 1) { i ->

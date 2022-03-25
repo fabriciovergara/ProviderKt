@@ -183,3 +183,22 @@ fun AppMain() {
   }
 }
 ```
+
+### SavedStateHandler
+
+```kotlin
+val toDoListProvider by provider<List<String>>(type = ProviderType.Disposable) {
+    // with savedStateHandler extension you can get access to a SavedStateHandler
+    // then you can update this provider value everytime it's updated
+    self.onUpdated { next -> savedStateHandler[self.name] = next }
+    savedStateHandler[self.name] ?: listOf<String>()
+}
+
+@Composable
+fun MainPageContent() {
+    ProviderScope {
+        val list = toDoListProvider.watch()
+    }
+}
+
+```
