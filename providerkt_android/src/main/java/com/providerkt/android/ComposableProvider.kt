@@ -82,8 +82,29 @@ public fun <T> Provider<T>.read(): T {
 @Composable
 public fun <T> Provider<T>.watch(): MutableState<T> {
     val container = LocalProviderContainer.current ?: error("ProviderContainer not found")
-    val state = remember(key, container) {
-        mutableStateOf(container.read(this))
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var initialValue: Any? = null
+    var state: MutableState<T>? = null
+
+    val dispose = remember(key, container, lifecycleOwner) {
+        container.listen(this) { next ->
+            val localState = state
+            if (localState != null) {
+                localState.value = next
+            } else {
+                initialValue = next
+            }
+        }
+    }
+
+    DisposableEffect(dispose) {
+        onDispose { dispose() }
+    }
+
+    state = remember(dispose) {
+        @Suppress("UNCHECKED_CAST")
+        mutableStateOf(initialValue as T)
     }
 
     val mutableState = remember(state) {
@@ -94,10 +115,6 @@ public fun <T> Provider<T>.watch(): MutableState<T> {
                     container.update(this@watch, value)
                 }
         }
-    }
-
-    listen { next ->
-        state.value = next
     }
 
     return mutableState
@@ -112,6 +129,13 @@ public fun <T> Provider<T>.listen(block: (T) -> Unit) {
         val dispose = container.listen(this@listen, block)
         onDispose { dispose() }
     }
+}
+
+
+@Composable
+public fun <T> Provider<T>.refresh(): () -> Unit {
+    val container = LocalProviderContainer.current ?: error("ProviderContainer not found")
+    return { container.refresh(this) }
 }
 
 public val <T> ProviderRef<T>.savedStateHandler: SavedStateHandle

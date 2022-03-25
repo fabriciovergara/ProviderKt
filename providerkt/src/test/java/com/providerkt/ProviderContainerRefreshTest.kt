@@ -15,9 +15,9 @@ internal class ProviderContainerRefreshTest {
             "A${count}"
         }
 
-        val value = container.refresh(provider)
+        container.refresh(provider)
 
-        assertEquals("A1", value)
+        assertEquals("A1", container.read(provider))
         assertEquals(1, createCount)
     }
 
@@ -44,11 +44,11 @@ internal class ProviderContainerRefreshTest {
             value
         }
 
-        val value1 = container.read(provider)
-        val value2 = container.refresh(provider)
+        assertEquals("A1", container.read(provider))
 
-        assertEquals("A1", value1)
-        assertEquals("A2", value2)
+        container.refresh(provider)
+
+        assertEquals("A2",  container.read(provider))
         assertEquals(2, createCount)
         assertEquals(1, disposeCount)
         assertEquals("A1", disposeValue)

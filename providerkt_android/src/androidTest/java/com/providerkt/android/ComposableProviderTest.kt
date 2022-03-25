@@ -305,4 +305,47 @@ internal class ComposableProviderTest {
         composeTestRule.onNodeWithText("valueTest")
             .assertIsDisplayed()
     }
+
+
+    @Test
+    fun refresh_WHEN_refresh_provider_THEN_receive_value() {
+        var createCount = 0
+        val valueProvider by provider<String> {
+            createCount++
+            "$createCount"
+        }
+
+        composeTestRule.setContent {
+            ProviderScope {
+                val value by valueProvider.watch()
+                val refreshValue = valueProvider.refresh()
+
+                Text(
+                    text = value,
+                    modifier = Modifier.testTag("text1")
+                )
+
+                Button(
+                    onClick = {
+                        refreshValue()
+                    },
+                    modifier = Modifier.testTag("button")
+                ) {
+                    Text(text = "Click")
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithTag("text1")
+            .assert(hasText("1"))
+            .assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("button")
+            .performClick()
+
+        composeTestRule.onNodeWithTag("text1")
+            .assert(hasText("2"))
+            .assertIsDisplayed()
+
+    }
 }

@@ -49,7 +49,10 @@ internal class Container private constructor(
         }
     }
 
-    override fun <State> listen(provider: Provider<State>, block: TypedCallback<State>): VoidCallback {
+    override fun <State> listen(
+        provider: Provider<State>,
+        block: TypedCallback<State>,
+    ): VoidCallback {
         return doListen(provider = provider, block = block, origin = this, extras = collectExtras())
     }
 
@@ -61,9 +64,8 @@ internal class Container private constructor(
         return doUpdate(provider = provider, next = value, origin = this, extras = collectExtras())
     }
 
-    override fun <State> refresh(provider: Provider<State>): State {
-        doRefresh(provider = provider, origin = this, extras = collectExtras())
-        return doRead(provider = provider, origin = this, extras = collectExtras())
+    override fun <State> refresh(provider: Provider<State>) {
+        return doRefresh(provider = provider, origin = this, extras = collectExtras())
     }
 
     fun <State, WState> watch(origin: Provider<State>, provider: Provider<WState>): WState {

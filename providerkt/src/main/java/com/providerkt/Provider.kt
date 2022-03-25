@@ -21,7 +21,7 @@ public interface ProviderUpdater {
 }
 
 public interface ProviderRefresher {
-    public fun <State> refresh(provider: Provider<State>): State
+    public fun <State> refresh(provider: Provider<State>)
 }
 
 

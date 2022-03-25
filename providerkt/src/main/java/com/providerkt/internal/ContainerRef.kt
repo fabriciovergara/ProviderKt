@@ -49,8 +49,8 @@ internal class ContainerRef<State>(
         }
     }
 
-    override fun <State> refresh(provider: Provider<State>): State {
-        return container.refresh(provider)
+    override fun <State> refresh(provider: Provider<State>) {
+        container.refresh(provider)
     }
 
     override fun onDisposed(block: VoidCallback) {
